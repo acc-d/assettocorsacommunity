@@ -1102,6 +1102,57 @@ function loadTeamsFromStorage(){
   }catch(e){console.warn('No se pudieron cargar equipos guardados',e)}
 }
 function saveTeamsToStorage(){localStorage.setItem('acc_embedded_teams', JSON.stringify(embeddedTeamsData));}
+function dbTeamToAppTeam(row){
+  return {
+    id:Number(row.id),
+    name:row.name||row.nombre||'',
+    logo:row.logo||'',
+    sede:row.sede||'',
+    creacion:row.creacion||'',
+    palmares:Array.isArray(row.palmares)?row.palmares:parseLines(row.palmares||'N/A'),
+    director:row.director&&typeof row.director==='object'?row.director:{name:row.director_name||'',avatar:row.director_avatar||null,pilot_id:row.director_pilot_id||''},
+    members:Array.isArray(row.members)?row.members:[],
+    social:row.social||'N/A'
+  };
+}
+function appTeamToDbTeam(team){
+  return {
+    id:Number(team.id),
+    name:team.name||'',
+    logo:team.logo||'',
+    sede:team.sede||'',
+    creacion:team.creacion||'',
+    palmares:team.palmares||[],
+    director:team.director||{},
+    members:team.members||[],
+    social:team.social||'N/A'
+  };
+}
+async function loadTeamsFromSupabase(){
+  try{
+    const {data,error}=await supabaseClient.from('teams').select('*').order('id',{ascending:true});
+    if(error)throw error;
+    if(Array.isArray(data)&&data.length){
+      embeddedTeamsData=data.map(dbTeamToAppTeam);
+      saveTeamsToStorage();
+    }
+    return true;
+  }catch(e){
+    console.warn('No se pudieron cargar equipos desde Supabase:',e.message);
+    loadTeamsFromStorage();
+    return false;
+  }
+}
+async function saveTeamToSupabase(team){
+  const {error}=await supabaseClient.from('teams').upsert(appTeamToDbTeam(team),{onConflict:'id'});
+  if(error)throw error;
+  saveTeamsToStorage();
+}
+async function deleteTeamFromSupabase(id){
+  const {error}=await supabaseClient.from('teams').delete().eq('id',Number(id));
+  if(error)throw error;
+  saveTeamsToStorage();
+}
 function nextTeamId(){return embeddedTeamsData.reduce((m,t)=>Math.max(m,Number(t.id)||0),0)+1}
 function parseLines(text){return String(text||'').split('\n').map(x=>x.trim()).filter(Boolean)}
 function parseMembers(text){return parseLines(text).map(line=>{const parts=line.split('|').map(x=>x.trim());return {name:parts[0]||'', avatar:parts[1]||null, pilot_id:parts[2]||''}}).filter(x=>x.name)}
@@ -1173,7 +1224,7 @@ function pilotModalBackdrop(event){ if(event.target && event.target.id === 'pilo
 
 async function adminTeams(){
   if(!adminGuard())return;
-  loadTeamsFromStorage();
+  await loadTeamsFromSupabase();
   const body=$('adminPanelBody');
   window.accRegisteredProfiles=[];
   let profileOptions='';
@@ -1286,15 +1337,21 @@ function adminEditTeam(id){
 function adminClearTeamForm(){
   ['admTeamEditing','admTeamId','admTeamName','admTeamLogo','admTeamSede','admTeamCreacion','admTeamSocial','admTeamDirectorName','admTeamDirectorAvatar','admTeamDirectorPilotId','admTeamPalmares'].forEach(id=>{if($(id))$(id).value=''});if($('admTeamId'))$('admTeamId').disabled=false;const box=$('admTeamMembersVisual');if(box){box.innerHTML='';adminAddMemberRow();}adminUpdateTeamPreview();
 }
-function adminSaveTeam(){
+async function adminSaveTeam(){
   const editing=val('admTeamEditing');const id=editing?Number(editing):(Number(val('admTeamId'))||nextTeamId());
   const team={id,name:val('admTeamName'),logo:val('admTeamLogo'),sede:val('admTeamSede'),creacion:val('admTeamCreacion'),palmares:parseLines($('admTeamPalmares').value||'N/A'),director:{name:val('admTeamDirectorName'),avatar:val('admTeamDirectorAvatar')||null,pilot_id:val('admTeamDirectorPilotId')||''},members:adminGetVisualMembers(),social:val('admTeamSocial')||'N/A'};
   if(!team.name)return toast('El nombre del equipo es obligatorio.');
   if(editing){embeddedTeamsData=embeddedTeamsData.map(t=>Number(t.id)===Number(editing)?team:t)}else{embeddedTeamsData.push(team)}
-  saveTeamsToStorage();renderTeamsGallery();toast('Equipo guardado.');adminTeams();
+  try{
+    await saveTeamToSupabase(team);
+    renderTeamsGallery();toast('Equipo guardado en Supabase.');await adminTeams();
+  }catch(e){
+    console.error(e);
+    saveTeamsToStorage();renderTeamsGallery();toast('No se pudo guardar en Supabase: '+e.message);
+  }
 }
 
-function adminDeleteTeam(id){if(!confirm('¿Borrar equipo?'))return;embeddedTeamsData=embeddedTeamsData.filter(t=>Number(t.id)!==Number(id));saveTeamsToStorage();renderTeamsGallery();toast('Equipo borrado.');adminTeams()}
+async function adminDeleteTeam(id){if(!confirm('¿Borrar equipo?'))return;embeddedTeamsData=embeddedTeamsData.filter(t=>Number(t.id)!==Number(id));try{await deleteTeamFromSupabase(id);renderTeamsGallery();toast('Equipo borrado de Supabase.');await adminTeams()}catch(e){saveTeamsToStorage();renderTeamsGallery();toast('No se pudo borrar en Supabase: '+e.message);await adminTeams()}}
 function adminResetTeams(){if(!confirm('¿Restaurar los equipos originales del HTML? Se perderán los cambios locales.'))return;localStorage.removeItem('acc_embedded_teams');location.reload()}
 function adminExportTeams(){const box=$('admTeamsExport');box.classList.remove('hidden');box.innerHTML=`<b>JSON de equipos:</b><textarea readonly style="margin-top:10px;min-height:260px">${JSON.stringify(embeddedTeamsData,null,2).replace(/</g,'&lt;')}</textarea>`}
 
@@ -1304,6 +1361,8 @@ renderTeamsGallery();
 async function init(){
   try{
     initNationalitySelects();
+    await loadTeamsFromSupabase();
+    renderTeamsGallery();
     renderHome();
     const cached=localStorage.getItem("acc_user");
     if(cached){try{currentUser=JSON.parse(cached)}catch{}}
