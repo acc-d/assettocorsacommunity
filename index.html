@@ -677,8 +677,50 @@ function startEntry(id){
   toggleEntryCodriverFields(e);
   showPage("entry")
 }
-async function registerUser(){const email=$("regEmail").value.trim(),password=$("regPassword").value,steam=$("regSteam").value.trim(),nationality=$("regNationality").value,ccaa=$("regCcaa").value;if(!email||!password||!$("regName").value.trim()||!$("regLastName").value.trim())return toast("Rellena nombre, apellido, email y contraseña.");if(!validateSteamId(steam))return toast("El Steam ID debe tener exactamente 17 dígitos numéricos.");if(!nationality)return toast("Selecciona la nacionalidad.");if(nationality==="España"&&!ccaa)return toast("Selecciona la comunidad autónoma.");const {data,error}=await supabaseClient.auth.signUp({email,password});if(error)return toast(error.message);const userId=data.user?.id;if(userId){const {error:profileError}=await supabaseClient.from("profiles").insert({id:userId,nombre:$("regName").value.trim(),apellido:$("regLastName").value.trim(),steam_id:steam,licencia_piloto:$("regLicense").value.trim(),equipo:$("regTeam").value.trim(),licencia_equipo:$("regTeamLicense").value.trim(),nacionalidad:nationality,comunidad_autonoma:nationality==="España"?ccaa:"",email,role:"pilot"});if(profileError)return toast(profileError.message)}toast("Registro creado. Ya puedes iniciar sesión.");showPage("login")}
-async function loadProfile(authUser){let {data,error}=await supabaseClient.from("profiles").select("*").eq("id",authUser.id).limit(1);if(error){toast(error.message);return null}let profile=data&&data.length?data[0]:null;if(!profile){const fallbackName=(authUser.email||"piloto@demo.com").split("@")[0];const {data:created,error:createError}=await supabaseClient.from("profiles").insert({id:authUser.id,nombre:fallbackName,apellido:"",steam_id:"",licencia_piloto:"",equipo:"",licencia_equipo:"",nacionalidad:"",comunidad_autonoma:"",email:authUser.email,role:"pilot"}).select("*").limit(1);if(createError){toast(createError.message);return null}profile=created&&created.length?created[0]:null}if(!profile){toast("No se pudo cargar el perfil.");return null}currentUser={id:authUser.id,name:profile.nombre||"",lastName:profile.apellido||"",email:profile.email||authUser.email,steam:profile.steam_id||"",license:profile.licencia_piloto||"",team:profile.equipo||"",teamLicense:profile.licencia_equipo||"",nationality:profile.nacionalidad||"",ccaa:profile.comunidad_autonoma||"",role:profile.role||"pilot"};localStorage.setItem("acc_user",JSON.stringify(currentUser));updateUserMenu();await loadMyRegistrations();return currentUser}
+async function registerUser(){
+  const email=$("regEmail").value.trim(),
+        password=$("regPassword").value,
+        steam=$("regSteam").value.trim(),
+        nationality=$("regNationality").value,
+        ccaa=$("regCcaa").value;
+
+  if(!email||!password||!$("regName").value.trim()||!$("regLastName").value.trim())return toast("Rellena nombre, apellido, email y contraseña.");
+  if(!validateSteamId(steam))return toast("El Steam ID debe tener exactamente 17 dígitos numéricos.");
+  if(!nationality)return toast("Selecciona la nacionalidad.");
+  if(nationality==="España"&&!ccaa)return toast("Selecciona la comunidad autónoma.");
+
+  const profilePayload={
+    nombre:$("regName").value.trim(),
+    apellido:$("regLastName").value.trim(),
+    steam_id:steam,
+    licencia_piloto:$("regLicense").value.trim(),
+    equipo:$("regTeam").value.trim(),
+    licencia_equipo:$("regTeamLicense").value.trim(),
+    nacionalidad:nationality,
+    comunidad_autonoma:nationality==="España"?ccaa:"",
+    email,
+    role:"pilot"
+  };
+
+  const {data,error}=await supabaseClient.auth.signUp({
+    email,
+    password,
+    options:{data:profilePayload}
+  });
+  if(error)return toast(error.message);
+
+  const userId=data.user?.id;
+  if(userId){
+    const {error:profileError}=await supabaseClient
+      .from("profiles")
+      .upsert({id:userId,...profilePayload},{onConflict:"id"});
+    if(profileError)return toast(profileError.message);
+  }
+
+  toast("Registro creado. Ya puedes iniciar sesión.");
+  showPage("login");
+}
+async function loadProfile(authUser){let {data,error}=await supabaseClient.from("profiles").select("*").eq("id",authUser.id).limit(1);if(error){toast(error.message);return null}let profile=data&&data.length?data[0]:null;if(!profile){const fallbackName=(authUser.email||"piloto@demo.com").split("@")[0];const {data:created,error:createError}=await supabaseClient.from("profiles").upsert({id:authUser.id,nombre:fallbackName,apellido:"",steam_id:"",licencia_piloto:"",equipo:"",licencia_equipo:"",nacionalidad:"",comunidad_autonoma:"",email:authUser.email,role:"pilot"},{onConflict:"id"}).select("*").limit(1);if(createError){toast(createError.message);return null}profile=created&&created.length?created[0]:null}if(!profile){toast("No se pudo cargar el perfil.");return null}currentUser={id:authUser.id,name:profile.nombre||"",lastName:profile.apellido||"",email:profile.email||authUser.email,steam:profile.steam_id||"",license:profile.licencia_piloto||"",team:profile.equipo||"",teamLicense:profile.licencia_equipo||"",nationality:profile.nacionalidad||"",ccaa:profile.comunidad_autonoma||"",role:profile.role||"pilot"};localStorage.setItem("acc_user",JSON.stringify(currentUser));updateUserMenu();await loadMyRegistrations();return currentUser}
 async function loginUser(){const email=$("loginEmail").value.trim(),password=$("loginPassword").value;if(!email||!password)return toast("Escribe email y contraseña.");const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});if(error)return toast(error.message);const profile=await loadProfile(data.user);toast(profile?.role==="admin"?"Login admin correcto.":"Login correcto.");showPage("home")}
 async function resetPassword(){
   const email=$("loginEmail").value.trim();
