@@ -105,6 +105,7 @@ textarea{width:100%;min-height:110px;border:1px solid var(--border);border-radiu
 <button class="nav-btn" data-nav="pruebas" onclick="showPage('pruebas')">🏆 Pruebas</button>
 <a class="nav-btn" href="https://acc-d.github.io/tiempos-online/" rel="noopener noreferrer" target="_blank">⏱ Live Timing</a>
 <button class="nav-btn" data-nav="teams" onclick="showPage('teams')">👥 Equipos</button>
+<button class="nav-btn" data-nav="licenses" onclick="showPage('licenses')">🪪 Licencias</button>
 <button class="nav-btn hidden" data-nav="admin" id="adminNavBtn" onclick="openAdmin()">🛠 Admin</button>
 <div class="user-menu" id="userMenu">
 <button class="nav-btn" onclick="toggleUserMenu(event)">👤 Cuenta ▾</button>
@@ -127,7 +128,7 @@ textarea{width:100%;min-height:110px;border:1px solid var(--border);border-radiu
       <h1>ACC <span>Rally Simracing</span></h1>
       <p>El campeonato definitivo para competir, inscribirte en pruebas, seguir eventos y formar parte de equipos de la comunidad.</p>
       <div class="acc-home-actions">
-        <button class="pill-btn primary" onclick="showPage('pruebas')">Ver más detalless</button>
+        <button class="pill-btn primary" onclick="showPage('pruebas')">Ver más detalles</button>
         <button class="pill-btn" onclick="showPage('teams')">Equipos disponibles</button>
       </div>
     </div>
@@ -395,6 +396,47 @@ textarea{width:100%;min-height:110px;border:1px solid var(--border);border-radiu
   </div>
 </div>
 
+
+
+<section class="page" id="licenses">
+  <div class="hero">
+    <div class="hero-card">
+      <p class="eyebrow">Solicitudes oficiales</p>
+      <h1>Licencias ACC</h1>
+      <p>Solicita tu licencia de piloto o de equipo. La administración revisará la solicitud y te enviará la licencia cuando esté aprobada.</p>
+    </div>
+  </div>
+
+  <div class="admin-two">
+    <div class="form-card" style="max-width:none;margin:0">
+      <p class="eyebrow">Licencia de piloto</p>
+      <h1>Solicitar licencia de piloto</h1>
+      <div class="form-grid">
+        <div class="field"><label>Nombre</label><input id="pilotLicenseName" placeholder="Nombre"/></div>
+        <div class="field"><label>Primer apellido</label><input id="pilotLicenseLastName" placeholder="Primer apellido"/></div>
+        <div class="field"><label>Steam ID</label><input id="pilotLicenseSteam" inputmode="numeric" maxlength="17" oninput="onlyDigits17(this)" placeholder="17 dígitos"/></div>
+        <div class="field"><label>Discord</label><input id="pilotLicenseDiscord" placeholder="usuario#0000 o @usuario"/></div>
+        <div class="field full"><label>E-mail (opcional)</label><input id="pilotLicenseEmail" type="email" placeholder="tu@email.com"/></div>
+      </div>
+      <div class="form-actions">
+        <button class="submit-btn" onclick="submitPilotLicenseRequest()">Enviar solicitud</button>
+      </div>
+    </div>
+
+    <div class="form-card" style="max-width:none;margin:0">
+      <p class="eyebrow">Licencia de equipo</p>
+      <h1>Solicitar licencia de equipo</h1>
+      <div class="form-grid">
+        <div class="field full"><label>Nombre del equipo</label><input id="teamLicenseTeamName" placeholder="Nombre del equipo"/></div>
+        <div class="field full"><label>Nombre del team manager</label><input id="teamLicenseManager" placeholder="Nombre del team manager"/></div>
+        <div class="field full"><label>Discord del team manager</label><input id="teamLicenseDiscord" placeholder="usuario#0000 o @usuario"/></div>
+      </div>
+      <div class="form-actions">
+        <button class="submit-btn" onclick="submitTeamLicenseRequest()">Enviar solicitud</button>
+      </div>
+    </div>
+  </div>
+</section>
 <section class="page" id="admin"><div id="adminContent"></div></section>
 </main>
 </div>
@@ -440,7 +482,7 @@ let events = [];
 let myRegistrations = [];
 let entryMode = "new";
 function $(id){return document.getElementById(id)}
-function showPage(id){document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));$(id).classList.add("active");document.querySelectorAll("[data-nav]").forEach(b=>b.classList.remove("active"));const nav=document.querySelector(`[data-nav="${id}"]`);if(nav)nav.classList.add("active");window.scrollTo(0,0)}
+function showPage(id){document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));$(id).classList.add("active");document.querySelectorAll("[data-nav]").forEach(b=>b.classList.remove("active"));const nav=document.querySelector(`[data-nav="${id}"]`);if(nav)nav.classList.add("active");if(id==="licenses")setTimeout(fillLicenseFormsFromProfile,0);window.scrollTo(0,0)}
 function toggleUserMenu(e){e.stopPropagation();$("userMenu").classList.toggle("open")}function closeUserMenu(){$("userMenu").classList.remove("open")}document.addEventListener("click",closeUserMenu)
 function toast(msg){const el=$("toast");el.textContent=msg;el.classList.add("visible");setTimeout(()=>el.classList.remove("visible"),2800)}
 function hideLoading(){const el=$("loadingOverlay");if(el)el.classList.add("hidden")}
@@ -772,7 +814,7 @@ async function confirmEntry(){
   saveEntry(currentEventId,entry);await loadMyRegistrations();await loadPublicEvents();toast("Inscripción guardada. Ya puedes ver archivos de tu sesión.");openEvent(currentEventId)
 }
 function openAdmin(){if(!currentUser){toast("Inicia sesión con tu cuenta admin.");showPage("login");return}if(currentUser.role!=="admin"){toast("Acceso denegado. Esta cuenta no es administradora.");showPage("home");return}renderAdmin();showPage("admin")}
-const adminState={events:[],championships:[],sessions:[],cars:[],categories:[],championshipCars:[],championshipCategories:[],files:[],registrations:[],profiles:[]};
+const adminState={events:[],championships:[],sessions:[],cars:[],categories:[],championshipCars:[],championshipCategories:[],files:[],registrations:[],profiles:[],licenseRequests:[]};
 let adminSelectedRegistrationEventId = "";
 let adminEditingRegistrationId = null;
 function adminGuard(){if(!currentUser){toast("Inicia sesión con tu cuenta admin.");showPage("login");return false}if(currentUser.role!=="admin"){toast("Acceso denegado. Esta cuenta no es administradora.");showPage("home");return false}return true}
@@ -795,13 +837,14 @@ function renderAdmin(){
           <button class="admin-tab" data-admin-tab="categories" onclick="adminTab('categories')">Categorías</button>
           <button class="admin-tab" data-admin-tab="files" onclick="adminTab('files')">Archivos</button>
           <button class="admin-tab" data-admin-tab="teams" onclick="adminTab('teams')">Equipos</button>
+          <button class="admin-tab" data-admin-tab="licenses" onclick="adminTab('licenses')">Licencias</button>
         </div>
         <div id="adminPanelBody" class="admin-panel-body"></div>
       </div>
     </div>`;
 }
 function adminSetActive(tab){document.querySelectorAll('[data-admin-tab]').forEach(b=>b.classList.toggle('active',b.dataset.adminTab===tab))}
-async function adminTab(tab){if(!adminGuard())return;adminSetActive(tab);if(tab==='events')return adminEvents();if(tab==='championships')return adminChampionships();if(tab==='sessions')return adminSessions();if(tab==='registrations')return adminRegistrations();if(tab==='cars')return adminCars();if(tab==='categories')return adminCategories();if(tab==='files')return adminFiles();if(tab==='teams')return adminTeams()}
+async function adminTab(tab){if(!adminGuard())return;adminSetActive(tab);if(tab==='events')return adminEvents();if(tab==='championships')return adminChampionships();if(tab==='sessions')return adminSessions();if(tab==='registrations')return adminRegistrations();if(tab==='cars')return adminCars();if(tab==='categories')return adminCategories();if(tab==='files')return adminFiles();if(tab==='teams')return adminTeams();if(tab==='licenses')return adminLicenseRequests()}
 async function withTimeout(promise, ms=9000, label='consulta'){
   let timer;
   const timeout = new Promise((_, reject) => {
@@ -1249,6 +1292,102 @@ async function deleteTeamFromSupabase(id){
   if(error)throw error;
   saveTeamsToStorage();
 }
+
+function fillLicenseFormsFromProfile(){
+  if(!currentUser)return;
+  if($("pilotLicenseName"))$("pilotLicenseName").value=currentUser.name||"";
+  if($("pilotLicenseLastName"))$("pilotLicenseLastName").value=currentUser.lastName||"";
+  if($("pilotLicenseEmail"))$("pilotLicenseEmail").value=currentUser.email||"";
+  if($("pilotLicenseSteam"))$("pilotLicenseSteam").value=currentUser.steam||"";
+  if($("teamLicenseManager"))$("teamLicenseManager").value=`${currentUser.name||""} ${currentUser.lastName||""}`.trim();
+  if($("teamLicenseTeamName"))$("teamLicenseTeamName").value=currentUser.team||"";
+}
+async function submitPilotLicenseRequest(){
+  const payload={
+    type:"pilot",
+    status:"pendiente",
+    user_id:currentUser?.id||null,
+    name:val("pilotLicenseName"),
+    last_name:val("pilotLicenseLastName"),
+    email:val("pilotLicenseEmail"),
+    steam_id:val("pilotLicenseSteam"),
+    discord:val("pilotLicenseDiscord"),
+    team_name:"",
+    manager_name:"",
+    members:"",
+    notes:""
+  };
+  if(!payload.name||!payload.last_name||!payload.steam_id||!payload.discord)return toast("Rellena nombre, primer apellido, Steam ID y Discord.");
+  if(!validateSteamId(payload.steam_id))return toast("El Steam ID debe tener 17 dígitos.");
+  const {error}=await supabaseClient.from("license_requests").insert(payload);
+  if(error)return toast(error.message);
+  ["pilotLicenseName","pilotLicenseLastName","pilotLicenseSteam","pilotLicenseDiscord","pilotLicenseEmail"].forEach(id=>{if($(id))$(id).value=""});
+  fillLicenseFormsFromProfile();
+  toast("Solicitud de licencia de piloto enviada.");
+}
+async function submitTeamLicenseRequest(){
+  const payload={
+    type:"team",
+    status:"pendiente",
+    user_id:currentUser?.id||null,
+    name:"",
+    last_name:"",
+    email:"",
+    steam_id:"",
+    discord:val("teamLicenseDiscord"),
+    team_name:val("teamLicenseTeamName"),
+    manager_name:val("teamLicenseManager"),
+    members:"",
+    notes:""
+  };
+  if(!payload.team_name||!payload.manager_name||!payload.discord)return toast("Rellena nombre del equipo, team manager y Discord.");
+  const {error}=await supabaseClient.from("license_requests").insert(payload);
+  if(error)return toast(error.message);
+  ["teamLicenseTeamName","teamLicenseManager","teamLicenseDiscord"].forEach(id=>{if($(id))$(id).value=""});
+  fillLicenseFormsFromProfile();
+  toast("Solicitud de licencia de equipo enviada.");
+}
+async function adminLicenseRequests(){
+  if(!adminGuard())return;
+  adminState.licenseRequests=await adminFetch("license_requests","*","created_at",false);
+  const rows=adminState.licenseRequests.map(r=>{
+    const isPilot=r.type==="pilot";
+    const title=isPilot?`${r.name||""} ${r.last_name||""}`.trim():(r.team_name||"Equipo sin nombre");
+    const sub=isPilot?`Steam ID: ${r.steam_id||"-"} · Discord: ${r.discord||"-"}`:`Responsable: ${r.manager_name||"-"} · Discord: ${r.discord||"-"}`;
+    const status=r.status||"pendiente";
+    return `<div class="admin-list-item" style="display:block">
+      <div style="display:flex;justify-content:space-between;gap:14px;align-items:flex-start;flex-wrap:wrap">
+        <span>
+          <b>${isPilot?"🪪 Piloto":"👥 Equipo"} · ${title}</b><br>
+          <small>${r.email||"-"} · ${sub}</small><br>
+          ${r.members?`<small><b>Pilotos:</b> ${String(r.members).replace(/\n/g,", ")}</small><br>`:""}
+          ${r.notes?`<small><b>Notas:</b> ${r.notes}</small><br>`:""}
+          <small>Estado: <b>${status}</b></small>
+        </span>
+        <span style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="mini-btn primary" onclick="adminUpdateLicenseStatus('${r.id}','enviada')">Marcar enviada</button>
+          <button class="mini-btn" onclick="adminUpdateLicenseStatus('${r.id}','pendiente')">Pendiente</button>
+          <button class="mini-btn danger" onclick="adminDeleteLicenseRequest('${r.id}')">Borrar</button>
+        </span>
+      </div>
+    </div>`;
+  }).join("")||'<div class="admin-list-item"><span>No hay solicitudes de licencias.</span></div>';
+  $("adminPanelBody").innerHTML=`<div class="admin-box"><h3>🪪 Solicitudes de licencias</h3><p class="admin-help">Aquí aparecen las solicitudes enviadas desde el formulario de licencias. Cuando la envíes al piloto o equipo, márcala como enviada.</p><div class="admin-list">${rows}</div></div>`;
+}
+async function adminUpdateLicenseStatus(id,status){
+  const {error}=await supabaseClient.from("license_requests").update({status}).eq("id",id);
+  if(error)return toast(error.message);
+  toast("Solicitud actualizada.");
+  adminLicenseRequests();
+}
+async function adminDeleteLicenseRequest(id){
+  if(!confirm("¿Borrar esta solicitud?"))return;
+  const {error}=await supabaseClient.from("license_requests").delete().eq("id",id);
+  if(error)return toast(error.message);
+  toast("Solicitud borrada.");
+  adminLicenseRequests();
+}
+
 function nextTeamId(){return embeddedTeamsData.reduce((m,t)=>Math.max(m,Number(t.id)||0),0)+1}
 function parseLines(text){return String(text||'').split('\n').map(x=>x.trim()).filter(Boolean)}
 function parseMembers(text){return parseLines(text).map(line=>{const parts=line.split('|').map(x=>x.trim());return {name:parts[0]||'', avatar:parts[1]||null, pilot_id:parts[2]||''}}).filter(x=>x.name)}
