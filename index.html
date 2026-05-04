@@ -512,8 +512,8 @@ async function loadPublicEvents(){
     safeSelect("championship_categories","*",null,true),
     safeSelect("event_cars","*",null,true),
     safeSelect("event_categories","*",null,true),
-    currentUser ? safeSelect("registrations","*","created_at",false) : Promise.resolve([]),
-    currentUser ? safeSelect("session_files","*","created_at",true) : Promise.resolve([])
+    safeSelect("registrations","*","created_at",false),
+    safeSelect("session_files","*","created_at",true)
   ]);
 
   events = dbEvents.map(ev=>{
@@ -598,7 +598,7 @@ function renderHome(){
     grid.innerHTML='<div class="event-card"><h2>No hay eventos publicados</h2><p class="empty">Cuando crees eventos desde el panel de administración aparecerán aquí automáticamente.</p></div>';
     return;
   }
-  grid.innerHTML=events.map(e=>`<article class="event-card">${e.plateUrl?`<img class="event-plate" src="${e.plateUrl}" alt="Placa ${e.name}" loading="lazy">`:""}<div><p class="eyebrow">${e.championship||"Campeonato"} · ${e.subtitle||"Prueba ACC"}</p><h2>${e.name}</h2><p class="empty">${e.description||""}</p></div><div class="event-meta"><div class="mini-stat"><b>${e.drivers||0}</b><span>Inscritos</span></div><div class="mini-stat"><b>${e.distance||"—"}</b><span>Kilometraje total</span></div><div class="mini-stat"><b>${e.status||"—"}</b><span>Estado</span></div></div><button class="wide-btn primary" onclick="openEvent('${e.id}')">Ver más detalles.</button></article>`).join("")
+  grid.innerHTML=events.map(e=>`<article class="event-card">${e.plateUrl?`<img class="event-plate" src="${e.plateUrl}" alt="Placa ${e.name}" loading="lazy">`:""}<div><p class="eyebrow">${e.championship||"Campeonato"} · ${e.subtitle||"Prueba ACC"}</p><h2>${e.name}</h2><p class="empty">${e.description||""}</p></div><div class="event-meta"><div class="mini-stat"><b>${e.drivers||0}</b><span>Inscritos</span></div><div class="mini-stat"><b>${e.distance||"—"}</b><span>Kilometraje total</span></div><div class="mini-stat"><b>${e.status||"—"}</b><span>Estado</span></div></div><button class="wide-btn primary" onclick="openEvent('${e.id}')">Ver más detalles</button></article>`).join("")
 }
 function getEntry(eventId){
   const remote=myRegistrations.find(r=>r.event_id===eventId);
@@ -1009,7 +1009,7 @@ async function adminRegistrations(){
 
     const [regRes, profileRes] = await Promise.all([
       withTimeout(supabaseClient.from('registrations').select('id,event_id,pilot_id,copiloto,nacionalidad_copiloto,categoria,coche,session_id,session_change_count,vehicle_change_count,created_at').order('created_at',{ascending:false}), 9000, 'inscripciones'),
-      withTimeout(supabaseClient.from('profiles').select('id,nombre,apellido,email,equipo,licencia_equipo'), 9000, 'perfiles')
+      withTimeout(supabaseClient.from('profiles').select('id,nombre,apellido,email,equipo,licencia_piloto,licencia_equipo'), 9000, 'perfiles')
     ]);
 
     if(regRes.error){
@@ -1065,7 +1065,7 @@ async function adminRegistrations(){
       const p=adminState.profiles.find(x=>x.id===r.pilot_id)||{};
       const s=adminState.sessions.find(x=>x.id===r.session_id)||{};
       return `<tr>
-        <td>${p.nombre||''} ${p.apellido||''}<br><small>${p.email||''}</small></td>
+        <td>${p.nombre||''} ${p.apellido||''}<br><small>${p.licencia_piloto||''}</small></td>
         <td>${p.equipo||'—'}<br><small>${p.licencia_equipo||''}</small></td>
         <td>${r.copiloto||''}<br><small>${r.nacionalidad_copiloto||''}</small></td>
         <td>${r.categoria||''}</td>
