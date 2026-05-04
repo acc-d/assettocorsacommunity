@@ -522,7 +522,7 @@ function renderHome(){
     grid.innerHTML='<div class="event-card"><h2>No hay eventos publicados</h2><p class="empty">Cuando crees eventos desde el panel de administración aparecerán aquí automáticamente.</p></div>';
     return;
   }
-  grid.innerHTML=events.map(e=>`<article class="event-card">${e.plateUrl?`<img class="event-plate" src="${e.plateUrl}" alt="Placa ${e.name}" loading="lazy">`:""}<div><p class="eyebrow">${e.championship||"Campeonato"} · ${e.subtitle||"Prueba ACC"}</p><h2>${e.name}</h2><p class="empty">${e.description||""}</p></div><div class="event-meta"><div class="mini-stat"><b>${e.drivers||0}</b><span>Inscritos</span></div><div class="mini-stat"><b>${e.distance||"—"}</b><span>Distancia</span></div><div class="mini-stat"><b>${e.status||"—"}</b><span>Estado</span></div></div><button class="wide-btn primary" onclick="openEvent('${e.id}')">Acceder</button></article>`).join("")
+  grid.innerHTML=events.map(e=>`<article class="event-card">${e.plateUrl?`<img class="event-plate" src="${e.plateUrl}" alt="Placa ${e.name}" loading="lazy">`:""}<div><p class="eyebrow">${e.championship||"Campeonato"} · ${e.subtitle||"Prueba ACC"}</p><h2>${e.name}</h2><p class="empty">${e.description||""}</p></div><div class="event-meta"><div class="mini-stat"><b>${e.drivers||0}</b><span>Inscritos</span></div><div class="mini-stat"><b>${e.distance||"—"}</b><span>Kilometraje total</span></div><div class="mini-stat"><b>${e.status||"—"}</b><span>Estado</span></div></div><button class="wide-btn primary" onclick="openEvent('${e.id}')">Acceder</button></article>`).join("")
 }
 function getEntry(eventId){
   const remote=myRegistrations.find(r=>r.event_id===eventId);
@@ -538,7 +538,7 @@ function clearLocalEntry(eventId){
 function clearAllLocalEntries(){localStorage.removeItem("acc_entries")}
 function saveEntry(eventId,entry){clearLocalEntry(eventId)}
 function renderSessionFiles(event){const entry=getEntry(event.id);if(!entry)return `<div class="notice">Los archivos estarán disponibles cuando te inscribas en una sesión de la prueba</div>`;const session=event.sessions.find(s=>s.id===entry.sessionId);const files=event.sessionFiles[entry.sessionId]||[];if(!files.length)return `<div class="notice">Estás inscrito en esta sesión, pero todavía no hay archivos publicados para ella.</div>`;return `<div class="session-file-group"><div class="session-file-title">${session?`${session.name} · ${session.date} · ${session.time}`:"Tu sesión"}</div>${files.map((file,i)=>{const visible=isFileVisible(file),count=getCountdownText(file);return `<div class="file-row"><div class="round-number">${i+1}</div><div class="file-info"><strong>${file.title}</strong><span>${file.description}${count?`<span class="countdown">${count}</span>`:""}</span></div><div class="file-type">Archivo</div>${visible?`<a class="file-btn" href="${file.url}" target="_blank" rel="noopener noreferrer">${file.button}</a>`:`<span class="file-btn disabled">Próximamente</span>`}</div>`}).join("")}</div>`}
-function openEvent(id){currentEventId=id;const e=events.find(x=>x.id===id);if(!e){toast("Evento no encontrado o todavía no está cargado.");showPage("home");return}const entry=getEntry(id);$("eventContent").innerHTML=`<div class="layout"><div class="stack"><section class="panel"><div class="panel-head"><div class="panel-title">📄 Documentos oficiales</div><div class="panel-kicker">Assetto Corsa Community</div></div><div class="panel-body"><div class="notice">Tablón de anuncios oficial de la prueba.<br><br><a class="pill-btn primary" href="${e.officialBoardUrl}" target="_blank" rel="noopener noreferrer">Abrir tablón de anuncios</a></div></div></section><section class="panel"><div class="panel-head"><div class="panel-title">🚦 Sesiones</div></div><div class="panel-body"><table><thead><tr><th>#</th><th>Fecha y hora</th><th>Plazas</th><th>Estado</th><th>Inscripción</th></tr></thead><tbody>${e.sessions.map((s,i)=>`<tr><td>${i+1}</td><td><strong>${s.date}</strong><br><span style="color:var(--blue);font-weight:900">${s.time}</span></td><td>${s.taken}/${s.max}</td><td><span class="badge ${s.state==="Open"?"open":"closed"}">${s.state}</span></td><td><span class="badge ${entry&&entry.sessionId===s.id?"open":"closed"}">${entry&&entry.sessionId===s.id?"Inscrito":"No inscrito"}</span></td></tr>`).join("")}</tbody></table></div></section><section class="panel"><div class="panel-head"><div class="panel-title">📦 Archivos de la prueba</div></div><div class="panel-body" id="sessionFilesBox">${renderSessionFiles(e)}</div></section></div><aside class="panel summary"><div class="panel-head"><div class="panel-title">Información de la prueba</div></div><div class="panel-body"><div class="summary-row"><span class="label">Apertura insc.</span><span class="value">${e.registrationOpen}</span></div><div class="summary-row"><span class="label">Cierre insc.</span><span class="value">${e.registrationClose}</span></div><div class="summary-row"><span class="label">Estado</span><span class="badge closed">${e.status}</span></div><div class="summary-row"><span class="label">Pilotos inscritos</span><span class="value">${e.drivers}</span></div><div class="summary-row"><span class="label">Distancia total</span><span class="value">${e.distance}</span></div><div class="summary-row"><span class="label">Campeonato</span><span class="value">${e.championship||"—"}</span></div>${e.posterUrl?`<div class="event-poster-summary"><div class="label">Cartel de la prueba</div><img class="event-poster" src="${e.posterUrl}" alt="Cartel ${e.name}" loading="lazy"></div>`:""}${entry?`
+function openEvent(id){currentEventId=id;const e=events.find(x=>x.id===id);if(!e){toast("Evento no encontrado o todavía no está cargado.");showPage("home");return}const entry=getEntry(id);$("eventContent").innerHTML=`<div class="layout"><div class="stack"><section class="panel"><div class="panel-head"><div class="panel-title">📄 Documentos oficiales</div><div class="panel-kicker">Assetto Corsa Community</div></div><div class="panel-body"><div class="notice">Tablón de anuncios oficial de la prueba.<br><br><a class="pill-btn primary" href="${e.officialBoardUrl}" target="_blank" rel="noopener noreferrer">Abrir tablón de anuncios</a></div></div></section><section class="panel"><div class="panel-head"><div class="panel-title">🚦 Sesiones</div></div><div class="panel-body"><table><thead><tr><th>#</th><th>Fecha y hora</th><th>Plazas</th><th>Estado</th><th>Inscripción</th></tr></thead><tbody>${e.sessions.map((s,i)=>`<tr><td>${i+1}</td><td><strong>${s.date}</strong><br><span style="color:var(--blue);font-weight:900">${s.time}</span></td><td>${s.taken}/${s.max}</td><td><span class="badge ${s.state==="Open"?"open":"closed"}">${s.state}</span></td><td><span class="badge ${entry&&entry.sessionId===s.id?"open":"closed"}">${entry&&entry.sessionId===s.id?"Inscrito":"No inscrito"}</span></td></tr>`).join("")}</tbody></table></div></section><section class="panel"><div class="panel-head"><div class="panel-title">📦 Archivos de la prueba</div></div><div class="panel-body" id="sessionFilesBox">${renderSessionFiles(e)}</div></section></div><aside class="panel summary"><div class="panel-head"><div class="panel-title">Información de la prueba</div></div><div class="panel-body"><div class="summary-row"><span class="label">Comienzo periodo de inscripciones</span><span class="value">${e.registrationOpen}</span></div><div class="summary-row"><span class="label">Fin periodo de inscripciones</span><span class="value">${e.registrationClose}</span></div><div class="summary-row"><span class="label">Pilotos inscritos provisionales</span><span class="value">${e.drivers}</span></div><div class="summary-row"><span class="label">Kilometraje total</span><span class="value">${e.distance}</span></div><div class="summary-row"><span class="label">Campeonato</span><span class="value">${e.championship||"—"}</span></div>${e.posterUrl?`<div class="event-poster-summary"><div class="label">Cartel de la prueba</div><img class="event-poster" src="${e.posterUrl}" alt="Cartel ${e.name}" loading="lazy"></div>`:""}${entry?`
 <div class="notice"><b>Ya estás inscrito.</b><br>Sesión: ${e.sessions.find(s=>s.id===entry.sessionId)?.name||"—"}<br>Categoría: ${entry.category}<br>Coche: ${entry.car}</div>
 <button class="wide-btn ${canChangeSession(e,entry)?'primary':''}" ${canChangeSession(e,entry)?`onclick="startSessionChange('${e.id}')"`:"disabled"}>Cambiar sesión ${entry.sessionChangeCount||0}/1</button>
 <button class="wide-btn ${canChangeVehicle(e,entry)?'primary':''}" ${canChangeVehicle(e,entry)?`onclick="startVehicleChange('${e.id}')"`:"disabled"}>Cambiar coche/categoría ${entry.vehicleChangeCount||0}/1</button>
@@ -643,50 +643,8 @@ function startEntry(id){
   toggleEntryCodriverFields(e);
   showPage("entry")
 }
-async function registerUser(){
-  const email=$("regEmail").value.trim(),
-        password=$("regPassword").value,
-        steam=$("regSteam").value.trim(),
-        nationality=$("regNationality").value,
-        ccaa=$("regCcaa").value;
-
-  if(!email||!password||!$("regName").value.trim()||!$("regLastName").value.trim())return toast("Rellena nombre, apellido, email y contraseña.");
-  if(!validateSteamId(steam))return toast("El Steam ID debe tener exactamente 17 dígitos numéricos.");
-  if(!nationality)return toast("Selecciona la nacionalidad.");
-  if(nationality==="España"&&!ccaa)return toast("Selecciona la comunidad autónoma.");
-
-  const profilePayload={
-    nombre:$("regName").value.trim(),
-    apellido:$("regLastName").value.trim(),
-    steam_id:steam,
-    licencia_piloto:$("regLicense").value.trim(),
-    equipo:$("regTeam").value.trim(),
-    licencia_equipo:$("regTeamLicense").value.trim(),
-    nacionalidad:nationality,
-    comunidad_autonoma:nationality==="España"?ccaa:"",
-    email,
-    role:"pilot"
-  };
-
-  const {data,error}=await supabaseClient.auth.signUp({
-    email,
-    password,
-    options:{data:profilePayload}
-  });
-  if(error)return toast(error.message);
-
-  const userId=data.user?.id;
-  if(userId){
-    const {error:profileError}=await supabaseClient
-      .from("profiles")
-      .upsert({id:userId,...profilePayload},{onConflict:"id"});
-    if(profileError)return toast(profileError.message);
-  }
-
-  toast("Registro creado. Ya puedes iniciar sesión.");
-  showPage("login");
-}
-async function loadProfile(authUser){let {data,error}=await supabaseClient.from("profiles").select("*").eq("id",authUser.id).limit(1);if(error){toast(error.message);return null}let profile=data&&data.length?data[0]:null;if(!profile){const fallbackName=(authUser.email||"piloto@demo.com").split("@")[0];const {data:created,error:createError}=await supabaseClient.from("profiles").upsert({id:authUser.id,nombre:fallbackName,apellido:"",steam_id:"",licencia_piloto:"",equipo:"",licencia_equipo:"",nacionalidad:"",comunidad_autonoma:"",email:authUser.email,role:"pilot"},{onConflict:"id"}).select("*").limit(1);if(createError){toast(createError.message);return null}profile=created&&created.length?created[0]:null}if(!profile){toast("No se pudo cargar el perfil.");return null}currentUser={id:authUser.id,name:profile.nombre||"",lastName:profile.apellido||"",email:profile.email||authUser.email,steam:profile.steam_id||"",license:profile.licencia_piloto||"",team:profile.equipo||"",teamLicense:profile.licencia_equipo||"",nationality:profile.nacionalidad||"",ccaa:profile.comunidad_autonoma||"",role:profile.role||"pilot"};localStorage.setItem("acc_user",JSON.stringify(currentUser));updateUserMenu();await loadMyRegistrations();return currentUser}
+async function registerUser(){const email=$("regEmail").value.trim(),password=$("regPassword").value,steam=$("regSteam").value.trim(),nationality=$("regNationality").value,ccaa=$("regCcaa").value;if(!email||!password||!$("regName").value.trim()||!$("regLastName").value.trim())return toast("Rellena nombre, apellido, email y contraseña.");if(!validateSteamId(steam))return toast("El Steam ID debe tener exactamente 17 dígitos numéricos.");if(!nationality)return toast("Selecciona la nacionalidad.");if(nationality==="España"&&!ccaa)return toast("Selecciona la comunidad autónoma.");const {data,error}=await supabaseClient.auth.signUp({email,password});if(error)return toast(error.message);const userId=data.user?.id;if(userId){const {error:profileError}=await supabaseClient.from("profiles").insert({id:userId,nombre:$("regName").value.trim(),apellido:$("regLastName").value.trim(),steam_id:steam,licencia_piloto:$("regLicense").value.trim(),equipo:$("regTeam").value.trim(),licencia_equipo:$("regTeamLicense").value.trim(),nacionalidad:nationality,comunidad_autonoma:nationality==="España"?ccaa:"",email,role:"pilot"});if(profileError)return toast(profileError.message)}toast("Registro creado. Ya puedes iniciar sesión.");showPage("login")}
+async function loadProfile(authUser){let {data,error}=await supabaseClient.from("profiles").select("*").eq("id",authUser.id).limit(1);if(error){toast(error.message);return null}let profile=data&&data.length?data[0]:null;if(!profile){const fallbackName=(authUser.email||"piloto@demo.com").split("@")[0];const {data:created,error:createError}=await supabaseClient.from("profiles").insert({id:authUser.id,nombre:fallbackName,apellido:"",steam_id:"",licencia_piloto:"",equipo:"",licencia_equipo:"",nacionalidad:"",comunidad_autonoma:"",email:authUser.email,role:"pilot"}).select("*").limit(1);if(createError){toast(createError.message);return null}profile=created&&created.length?created[0]:null}if(!profile){toast("No se pudo cargar el perfil.");return null}currentUser={id:authUser.id,name:profile.nombre||"",lastName:profile.apellido||"",email:profile.email||authUser.email,steam:profile.steam_id||"",license:profile.licencia_piloto||"",team:profile.equipo||"",teamLicense:profile.licencia_equipo||"",nationality:profile.nacionalidad||"",ccaa:profile.comunidad_autonoma||"",role:profile.role||"pilot"};localStorage.setItem("acc_user",JSON.stringify(currentUser));updateUserMenu();await loadMyRegistrations();return currentUser}
 async function loginUser(){const email=$("loginEmail").value.trim(),password=$("loginPassword").value;if(!email||!password)return toast("Escribe email y contraseña.");const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});if(error)return toast(error.message);const profile=await loadProfile(data.user);toast(profile?.role==="admin"?"Login admin correcto.":"Login correcto.");showPage("home")}
 async function resetPassword(){
   const email=$("loginEmail").value.trim();
@@ -839,7 +797,7 @@ async function adminEvents(){await adminLoadBase();const champOptions='<option v
       <div class="field full"><label>Descripción</label><input id="admEventDescription" placeholder="Descripción corta"></div>
       <div class="field"><label>Apertura inscripción</label><input id="admEventOpen" type="datetime-local"></div>
       <div class="field"><label>Cierre inscripción</label><input id="admEventClose" type="datetime-local"></div>
-      <div class="field"><label>Distancia total</label><input id="admEventDistance" placeholder="38.00 km"></div>
+      <div class="field"><label>Kilometraje total total</label><input id="admEventDistance" placeholder="38.00 km"></div>
       <div class="field full"><label>Tablón de anuncios</label><input id="admEventBoard" placeholder="https://drive.google.com/..."></div>
       <div class="field full"><label>URL placa del rally (imagen para la tarjeta de evento)</label><input id="admEventPlate" placeholder="https://.../placa.png"></div>
       <div class="field full"><label>URL cartel de la prueba (imagen para detalles)</label><input id="admEventPoster" placeholder="https://.../cartel.jpg"></div>
