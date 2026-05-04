@@ -598,7 +598,7 @@ function renderHome(){
     grid.innerHTML='<div class="event-card"><h2>No hay eventos publicados</h2><p class="empty">Cuando crees eventos desde el panel de administración aparecerán aquí automáticamente.</p></div>';
     return;
   }
-  grid.innerHTML=events.map(e=>`<article class="event-card">${e.plateUrl?`<img class="event-plate" src="${e.plateUrl}" alt="Placa ${e.name}" loading="lazy">`:""}<div><p class="eyebrow">${e.championship||"Campeonato"} · ${e.subtitle||"Prueba ACC"}</p><h2>${e.name}</h2><p class="empty">${e.description||""}</p></div><div class="event-meta"><div class="mini-stat"><b>${e.drivers||0}</b><span>Inscritos</span></div><div class="mini-stat"><b>${e.distance||"—"}</b><span>Kilometraje total</span></div><div class="mini-stat"><b>${e.status||"—"}</b><span>Estado</span></div></div><button class="wide-btn primary" onclick="openEvent('${e.id}')">Ver más detalles</button></article>`).join("")
+  grid.innerHTML=events.map(e=>`<article class="event-card">${e.plateUrl?`<img class="event-plate" src="${e.plateUrl}" alt="Placa ${e.name}" loading="lazy">`:""}<div><p class="eyebrow">${e.championship||"Campeonato"} · ${e.subtitle||"Prueba ACC"}</p><h2>${e.name}</h2><p class="empty">${e.description||""}</p></div><div class="event-meta"><div class="mini-stat"><b>${e.drivers||0}</b><span>Inscritos</span></div><div class="mini-stat"><b>${e.distance||"—"}</b><span>Kilometraje total</span></div><div class="mini-stat"><b>${e.status||"—"}</b><span>Estado</span></div></div><button class="wide-btn primary" onclick="openEvent('${e.id}')">Ver más detalles.</button></article>`).join("")
 }
 function getEntry(eventId){
   const remote=myRegistrations.find(r=>r.event_id===eventId);
@@ -762,7 +762,56 @@ async function registerUser(){
   toast("Registro creado. Ya puedes iniciar sesión.");
   showPage("login");
 }
-async function loadProfile(authUser){let {data,error}=await supabaseClient.from("profiles").select("*").eq("id",authUser.id).limit(1);if(error){toast(error.message);return null}let profile=data&&data.length?data[0]:null;if(!profile){const fallbackName=(authUser.email||"piloto@demo.com").split("@")[0];const {data:created,error:createError}=await supabaseClient.from("profiles").upsert({id:authUser.id,nombre:fallbackName,apellido:"",steam_id:"",licencia_piloto:"",equipo:"",licencia_equipo:"",nacionalidad:"",comunidad_autonoma:"",email:authUser.email,role:"pilot"},{onConflict:"id"}).select("*").limit(1);if(createError){toast(createError.message);return null}profile=created&&created.length?created[0]:null}if(!profile){toast("No se pudo cargar el perfil.");return null}currentUser={id:authUser.id,name:profile.nombre||"",lastName:profile.apellido||"",email:profile.email||authUser.email,steam:profile.steam_id||"",license:profile.licencia_piloto||"",team:profile.equipo||"",teamLicense:profile.licencia_equipo||"",nationality:profile.nacionalidad||"",ccaa:profile.comunidad_autonoma||"",role:profile.role||"pilot"};localStorage.setItem("acc_user",JSON.stringify(currentUser));updateUserMenu();await loadMyRegistrations();return currentUser}
+async function loadProfile(authUser){
+  if(!authUser?.id){currentUser=null;localStorage.removeItem("acc_user");updateUserMenu();return null}
+
+  let {data,error}=await supabaseClient
+    .from("profiles")
+    .select("*")
+    .eq("id",authUser.id)
+    .limit(1);
+
+  if(error){toast(error.message);return null}
+
+  let profile=data&&data.length?data[0]:null;
+
+  // Importante: al recargar NO creamos perfiles automáticamente.
+  // Si no existe perfil, usamos datos mínimos de Auth para no provocar errores de FK.
+  if(!profile){
+    const meta=authUser.user_metadata||{};
+    profile={
+      nombre:meta.nombre||"",
+      apellido:meta.apellido||"",
+      steam_id:meta.steam_id||"",
+      licencia_piloto:meta.licencia_piloto||"",
+      equipo:meta.equipo||"",
+      licencia_equipo:meta.licencia_equipo||"",
+      nacionalidad:meta.nacionalidad||"",
+      comunidad_autonoma:meta.comunidad_autonoma||"",
+      email:authUser.email||"",
+      role:meta.role||"pilot"
+    };
+  }
+
+  currentUser={
+    id:authUser.id,
+    name:profile.nombre||"",
+    lastName:profile.apellido||"",
+    email:profile.email||authUser.email,
+    steam:profile.steam_id||"",
+    license:profile.licencia_piloto||"",
+    team:profile.equipo||"",
+    teamLicense:profile.licencia_equipo||"",
+    nationality:profile.nacionalidad||"",
+    ccaa:profile.comunidad_autonoma||"",
+    role:profile.role||"pilot"
+  };
+
+  localStorage.setItem("acc_user",JSON.stringify(currentUser));
+  updateUserMenu();
+  await loadMyRegistrations();
+  return currentUser;
+}
 async function loginUser(){const email=$("loginEmail").value.trim(),password=$("loginPassword").value;if(!email||!password)return toast("Escribe email y contraseña.");const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});if(error)return toast(error.message);const profile=await loadProfile(data.user);toast(profile?.role==="admin"?"Login admin correcto.":"Login correcto.");showPage("home")}
 async function resetPassword(){
   const email=$("loginEmail").value.trim();
@@ -1403,7 +1452,7 @@ function renderTeamsGallery(){
   `).join('');
 }
 function teamProfile(person){
-  const linked = person.pilot_id ? `<small style="display:block;color:#64748b;margin-top:4px;font-weight:800">ID vinculado</small>` : '';
+  const linked = person.pilot_id ? `` : '';
   return `<div class="team-profile-card" onclick="event.stopPropagation();showPilotModal('${escapeAttr(person.name)}','${escapeAttr(person.avatar||'')}','${escapeAttr(person.pilot_id||'')}')"><div class="team-avatar">${person.avatar ? `<img src="${person.avatar}" alt="${person.name}">` : `<div class="team-silhouette">👤</div>`}</div><div class="team-profile-name">${person.name}${linked}</div></div>`;
 }
 function showTeamModal(id){
@@ -1413,7 +1462,7 @@ function showTeamModal(id){
   $('teamModalName').textContent = team.name;
   $('teamModalInfo').innerHTML = `<h3>SEDE</h3><p>${team.sede}</p><h3>CREACIÓN</h3><p>${team.creacion}</p><h3>PALMARÉS</h3><ul>${team.palmares.map(item=>`<li>${item}</li>`).join('')}</ul>`;
   $('teamModalSocial').innerHTML = (!team.social || team.social === 'N/A') ? `<p class="team-empty">Sin perfiles sociales disponibles por el momento</p>` : team.social;
-  $('teamModalDirector').innerHTML = teamProfile(team.director);
+  $('teamModalDirector').innerHTML = `<div class="team-profile-card"><div class="team-avatar">${team.director?.avatar ? `<img src="${team.director.avatar}" alt="${team.director.name}">` : `<div class="team-silhouette">👤</div>`}</div><div class="team-profile-name">${team.director?.name||''}</div></div>`;
   $('teamModalMembers').innerHTML = team.members.map(teamProfile).join('');
   $('teamModal').classList.add('visible');
 }
@@ -1440,15 +1489,20 @@ async function showPilotModal(name, avatar='', pilotId=''){
       const matchedProfiles=profiles.filter(p=>normalizeNameForMatch(`${p.nombre||''} ${p.apellido||''}`)===target || normalizeNameForMatch(p.nombre)===target);
       ids=matchedProfiles.map(p=>p.id);
     }
-    let regs=(regRes.data||[]).filter(r=>ids.includes(r.pilot_id));
+    let regs=(regRes.data||[]).filter(r=>{
+      if(!ids.includes(r.pilot_id))return false;
+      const se=sessions.find(x=>x.id===r.session_id);
+      if(!se?.fecha_hora)return false;
+      return new Date(se.fecha_hora).getTime() < Date.now();
+    });
     if(!regs.length){
-      $('pilotModalHistory').innerHTML='<p class="team-empty">No ha disputado ninguna carrera en la comunidad.</p>';
+      $('pilotModalHistory').innerHTML='<p class="team-empty">Todavía no tiene pruebas terminadas en la comunidad.</p>';
       return;
     }
     $('pilotModalHistory').innerHTML=regs.map(r=>{
       const ev=events.find(e=>e.id===r.event_id)||{};
       const se=sessions.find(x=>x.id===r.session_id)||{};
-      return `<div class="pilot-history-item"><b>${ev.nombre||r.event_id||'Evento'}</b><span>${ev.subtitulo||''}</span><span><b>Sesión:</b> ${se.nombre||r.session_id||'Sin sesión'} ${se.fecha_hora?'· '+new Date(se.fecha_hora).toLocaleString('es-ES'):''}</span><span><b>Categoría:</b> ${r.categoria||'-'} · <b>Coche:</b> ${r.coche||'-'}</span><span><b>Inscripción:</b> ${r.created_at?new Date(r.created_at).toLocaleString('es-ES'):'-'}</span></div>`;
+      return `<div class="pilot-history-item"><b>${ev.nombre||r.event_id||'Evento'}</b><span><b>Categoría:</b> ${r.categoria||'-'} · <b>Coche:</b> ${r.coche||'-'}</span></div>`;
     }).join('');
   }catch(e){
     $('pilotModalHistory').innerHTML=`<p class="team-empty">No se pudo cargar el historial: ${e.message}</p>`;
@@ -1499,7 +1553,6 @@ async function adminTeams(){
         <div class="form-grid">
           <div class="field"><label>Nombre director</label><input id="admTeamDirectorName" placeholder="Nombre director"></div>
           <div class="field"><label>Foto director</label><input id="admTeamDirectorAvatar" placeholder="logosequipos/director.png"></div>
-          <div class="field full"><label>ID piloto real del director</label><input id="admTeamDirectorPilotId" list="registeredPilotsList" placeholder="id del perfil registrado, si también corre"></div>
         </div>
       </div>
 
@@ -1564,17 +1617,17 @@ function adminUpdateTeamPreview(){
 }
 function adminEditTeam(id){
   const t=embeddedTeamsData.find(x=>Number(x.id)===Number(id));if(!t)return;
-  $('admTeamEditing').value=t.id;$('admTeamId').value=t.id;$('admTeamId').disabled=true;$('admTeamName').value=t.name||'';$('admTeamLogo').value=t.logo||'';$('admTeamSede').value=t.sede||'';$('admTeamCreacion').value=t.creacion||'';$('admTeamSocial').value=t.social||'';$('admTeamDirectorName').value=t.director?.name||'';$('admTeamDirectorAvatar').value=t.director?.avatar||'';if($('admTeamDirectorPilotId'))$('admTeamDirectorPilotId').value=t.director?.pilot_id||'';$('admTeamPalmares').value=(t.palmares||[]).join('\n');
+  $('admTeamEditing').value=t.id;$('admTeamId').value=t.id;$('admTeamId').disabled=true;$('admTeamName').value=t.name||'';$('admTeamLogo').value=t.logo||'';$('admTeamSede').value=t.sede||'';$('admTeamCreacion').value=t.creacion||'';$('admTeamSocial').value=t.social||'';$('admTeamDirectorName').value=t.director?.name||'';$('admTeamDirectorAvatar').value=t.director?.avatar||'';$('admTeamPalmares').value=(t.palmares||[]).join('\n');
   const box=$('admTeamMembersVisual'); if(box){box.innerHTML=''; (t.members||[]).forEach(m=>adminAddMemberRow(m)); if(!(t.members||[]).length)adminAddMemberRow();}
   adminUpdateTeamPreview();
   toast('Editando equipo. Guarda para aplicar cambios.');
 }
 function adminClearTeamForm(){
-  ['admTeamEditing','admTeamId','admTeamName','admTeamLogo','admTeamSede','admTeamCreacion','admTeamSocial','admTeamDirectorName','admTeamDirectorAvatar','admTeamDirectorPilotId','admTeamPalmares'].forEach(id=>{if($(id))$(id).value=''});if($('admTeamId'))$('admTeamId').disabled=false;const box=$('admTeamMembersVisual');if(box){box.innerHTML='';adminAddMemberRow();}adminUpdateTeamPreview();
+  ['admTeamEditing','admTeamId','admTeamName','admTeamLogo','admTeamSede','admTeamCreacion','admTeamSocial','admTeamDirectorName','admTeamDirectorAvatar','admTeamPalmares'].forEach(id=>{if($(id))$(id).value=''});if($('admTeamId'))$('admTeamId').disabled=false;const box=$('admTeamMembersVisual');if(box){box.innerHTML='';adminAddMemberRow();}adminUpdateTeamPreview();
 }
 async function adminSaveTeam(){
   const editing=val('admTeamEditing');const id=editing?Number(editing):(Number(val('admTeamId'))||nextTeamId());
-  const team={id,name:val('admTeamName'),logo:val('admTeamLogo'),sede:val('admTeamSede'),creacion:val('admTeamCreacion'),palmares:parseLines($('admTeamPalmares').value||'N/A'),director:{name:val('admTeamDirectorName'),avatar:val('admTeamDirectorAvatar')||null,pilot_id:val('admTeamDirectorPilotId')||''},members:adminGetVisualMembers(),social:val('admTeamSocial')||'N/A'};
+  const team={id,name:val('admTeamName'),logo:val('admTeamLogo'),sede:val('admTeamSede'),creacion:val('admTeamCreacion'),palmares:parseLines($('admTeamPalmares').value||'N/A'),director:{name:val('admTeamDirectorName'),avatar:val('admTeamDirectorAvatar')||null,pilot_id:''},members:adminGetVisualMembers(),social:val('admTeamSocial')||'N/A'};
   if(!team.name)return toast('El nombre del equipo es obligatorio.');
   if(editing){embeddedTeamsData=embeddedTeamsData.map(t=>Number(t.id)===Number(editing)?team:t)}else{embeddedTeamsData.push(team)}
   try{
@@ -1599,10 +1652,14 @@ async function init(){
     await loadTeamsFromSupabase();
     renderTeamsGallery();
     renderHome();
-    const cached=localStorage.getItem("acc_user");
-    if(cached){try{currentUser=JSON.parse(cached)}catch{}}
     const {data}=await supabaseClient.auth.getSession();
-    if(data.session?.user)await loadProfile(data.session.user);else updateUserMenu();
+    if(data.session?.user){
+      await loadProfile(data.session.user);
+    }else{
+      currentUser=null;
+      localStorage.removeItem("acc_user");
+      updateUserMenu();
+    }
     await loadPublicEvents();
   }catch(error){
     console.error(error);
