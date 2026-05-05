@@ -1361,7 +1361,7 @@ function dbTeamToAppTeam(row){
     logo:row.logo||'',
     sede:row.sede||'',
     creacion:row.creacion||'',
-    palmares:Array.isArray(row.palmares)?row.palmares:parseLines(row.palmares||'N/A'),
+    palmares:normalizePalmares(row.palmares||'N/A'),
     director:row.director&&typeof row.director==='object'?row.director:{name:row.director_name||'',avatar:row.director_avatar||null,pilot_id:row.director_pilot_id||''},
     members:Array.isArray(row.members)?row.members:[],
     social:row.social||'N/A'
@@ -1503,6 +1503,31 @@ async function adminDeleteLicenseRequest(id){
 
 function nextTeamId(){return embeddedTeamsData.reduce((m,t)=>Math.max(m,Number(t.id)||0),0)+1}
 function parseLines(text){return String(text||'').split('\n').map(x=>x.trim()).filter(Boolean)}
+function normalizePalmares(value){
+  let current = value;
+  for(let i=0;i<5 && typeof current === 'string';i++){
+    const trimmed = current.trim();
+    if(!trimmed) return ['N/A'];
+    if(trimmed === 'N/A') return ['N/A'];
+    try{
+      const parsed = JSON.parse(trimmed);
+      if(parsed === current) break;
+      current = parsed;
+      continue;
+    }catch(e){}
+    return parseLines(trimmed);
+  }
+  if(Array.isArray(current)){
+    const items = current.flatMap(item => normalizePalmares(item)).map(item => String(item).trim()).filter(Boolean);
+    return items.length ? items : ['N/A'];
+  }
+  if(current == null) return ['N/A'];
+  const lines = parseLines(current);
+  return lines.length ? lines : ['N/A'];
+}
+function renderPalmaresList(value){
+  return normalizePalmares(value).map(item=>`<li>${escapeAttr(item)}</li>`).join('');
+}
 function parseMembers(text){return parseLines(text).map(line=>{const parts=line.split('|').map(x=>x.trim());return {name:parts[0]||'', avatar:parts[1]||null, pilot_id:parts[2]||''}}).filter(x=>x.name)}
 function escapeAttr(v){return String(v??'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}
 function renderTeamsGallery(){
@@ -1524,7 +1549,7 @@ function showTeamModal(id){
   if(!team) return;
   $('teamModalImg').src = team.logo;
   $('teamModalName').textContent = team.name;
-  $('teamModalInfo').innerHTML = `<h3>SEDE</h3><p>${team.sede}</p><h3>CREACIÓN</h3><p>${team.creacion}</p><h3>PALMARÉS</h3><ul>${team.palmares.map(item=>`<li>${item}</li>`).join('')}</ul>`;
+  $('teamModalInfo').innerHTML = `<h3>SEDE</h3><p>${escapeAttr(team.sede)}</p><h3>CREACIÓN</h3><p>${escapeAttr(team.creacion)}</p><h3>PALMARÉS</h3><ul>${renderPalmaresList(team.palmares)}</ul>`;
   $('teamModalSocial').innerHTML = (!team.social || team.social === 'N/A') ? `<p class="team-empty">Sin perfiles sociales disponibles por el momento</p>` : team.social;
   $('teamModalDirector').innerHTML = `<div class="team-profile-card"><div class="team-avatar">${team.director?.avatar ? `<img src="${team.director.avatar}" alt="${team.director.name}">` : `<div class="team-silhouette">👤</div>`}</div><div class="team-profile-name">${team.director?.name||''}</div></div>`;
   $('teamModalMembers').innerHTML = team.members.map(teamProfile).join('');
@@ -1694,7 +1719,7 @@ function adminUpdateTeamPreview(){
 }
 function adminEditTeam(id){
   const t=embeddedTeamsData.find(x=>Number(x.id)===Number(id));if(!t)return;
-  $('admTeamEditing').value=t.id;$('admTeamId').value=t.id;$('admTeamId').disabled=true;$('admTeamName').value=t.name||'';$('admTeamLogo').value=t.logo||'';$('admTeamSede').value=t.sede||'';$('admTeamCreacion').value=t.creacion||'';$('admTeamSocial').value=t.social||'';$('admTeamDirectorName').value=t.director?.name||'';$('admTeamDirectorAvatar').value=t.director?.avatar||'';$('admTeamPalmares').value=(t.palmares||[]).join('\n');
+  $('admTeamEditing').value=t.id;$('admTeamId').value=t.id;$('admTeamId').disabled=true;$('admTeamName').value=t.name||'';$('admTeamLogo').value=t.logo||'';$('admTeamSede').value=t.sede||'';$('admTeamCreacion').value=t.creacion||'';$('admTeamSocial').value=t.social||'';$('admTeamDirectorName').value=t.director?.name||'';$('admTeamDirectorAvatar').value=t.director?.avatar||'';$('admTeamPalmares').value=normalizePalmares(t.palmares||'N/A').join('\n');
   const box=$('admTeamMembersVisual'); if(box){box.innerHTML=''; (t.members||[]).forEach(m=>adminAddMemberRow(m)); if(!(t.members||[]).length)adminAddMemberRow();}
   adminUpdateTeamPreview();
   toast('Editando equipo. Guarda para aplicar cambios.');
@@ -1704,7 +1729,7 @@ function adminClearTeamForm(){
 }
 async function adminSaveTeam(){
   const editing=val('admTeamEditing');const id=editing?Number(editing):(Number(val('admTeamId'))||nextTeamId());
-  const team={id,name:val('admTeamName'),logo:val('admTeamLogo'),sede:val('admTeamSede'),creacion:val('admTeamCreacion'),palmares:parseLines($('admTeamPalmares').value||'N/A'),director:{name:val('admTeamDirectorName'),avatar:val('admTeamDirectorAvatar')||null,pilot_id:''},members:adminGetVisualMembers(),social:val('admTeamSocial')||'N/A'};
+  const team={id,name:val('admTeamName'),logo:val('admTeamLogo'),sede:val('admTeamSede'),creacion:val('admTeamCreacion'),palmares:normalizePalmares($('admTeamPalmares').value||'N/A'),director:{name:val('admTeamDirectorName'),avatar:val('admTeamDirectorAvatar')||null,pilot_id:''},members:adminGetVisualMembers(),social:val('admTeamSocial')||'N/A'};
   if(!team.name)return toast('El nombre del equipo es obligatorio.');
   if(editing){embeddedTeamsData=embeddedTeamsData.map(t=>Number(t.id)===Number(editing)?team:t)}else{embeddedTeamsData.push(team)}
   try{
