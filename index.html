@@ -86,6 +86,63 @@ textarea{width:100%;min-height:110px;border:1px solid var(--border);border-radiu
   font-family: "Poppins", system-ui, -apple-system, sans-serif !important;
 }
 
+
+/* HISTORIAL PILOTOS - DISEÑO CLASIFICACIÓN */
+.pilot-history-item{
+  background:linear-gradient(135deg,#ffffff,#f8fafc);
+  border:1px solid #dfe7f1;
+  border-radius:18px;
+  padding:18px;
+  box-shadow:0 10px 22px rgba(15,23,42,.07);
+}
+.pilot-history-top{
+  display:flex;
+  justify-content:space-between;
+  gap:14px;
+  align-items:flex-start;
+  flex-wrap:wrap;
+  margin-bottom:14px;
+}
+.pilot-history-event{
+  font-size:17px;
+  font-weight:900;
+  color:#0f172a;
+  letter-spacing:-.02em;
+}
+.pilot-history-car{
+  color:#64748b;
+  font-size:12px;
+  font-weight:800;
+  margin-top:4px;
+}
+.pilot-history-results{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+}
+.pilot-result-box{
+  background:#f1f5f9;
+  border:1px solid #e2e8f0;
+  border-radius:14px;
+  padding:12px;
+}
+.pilot-result-box span{
+  display:block;
+  color:#64748b;
+  font-size:10px;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  margin-bottom:5px;
+}
+.pilot-result-box b{
+  display:block;
+  color:#0f172a;
+  font-size:18px;
+  font-weight:900;
+}
+@media(max-width:680px){.pilot-history-results{grid-template-columns:1fr}}
+
 </style>
 </head>
 <body>
@@ -1008,7 +1065,7 @@ async function adminRegistrations(){
     await adminLoadBase();
 
     const [regRes, profileRes] = await Promise.all([
-      withTimeout(supabaseClient.from('registrations').select('id,event_id,pilot_id,copiloto,nacionalidad_copiloto,categoria,coche,session_id,session_change_count,vehicle_change_count,created_at').order('created_at',{ascending:false}), 9000, 'inscripciones'),
+      withTimeout(supabaseClient.from('registrations').select('id,event_id,pilot_id,copiloto,nacionalidad_copiloto,categoria,coche,session_id,session_change_count,vehicle_change_count,posicion_general,posicion_categoria,created_at').order('created_at',{ascending:false}), 9000, 'inscripciones'),
       withTimeout(supabaseClient.from('profiles').select('id,nombre,apellido,email,equipo,licencia_piloto,licencia_equipo'), 9000, 'perfiles')
     ]);
 
@@ -1053,6 +1110,8 @@ async function adminRegistrations(){
           <div class="field"><label>Nacionalidad copiloto</label><input id="admEditRegCoNat" value="${editing.nacionalidad_copiloto||''}"></div>
           <div class="field"><label>Categoría</label><select id="admEditRegCategory" onchange="adminRefreshRegistrationCars()">${editCategories.map(c=>`<option value="${c.nombre}" ${c.nombre===editing.categoria?'selected':''}>${c.nombre}</option>`).join('') || `<option value="${editing.categoria||''}">${editing.categoria||'Sin categorías'}</option>`}</select></div>
           <div class="field"><label>Coche</label><select id="admEditRegCar">${editCars.map(c=>`<option value="${c.nombre}" ${c.nombre===editing.coche?'selected':''}>${c.nombre}</option>`).join('') || `<option value="${editing.coche||''}">${editing.coche||'Sin coches'}</option>`}</select></div>
+          <div class="field"><label>Clasificación general</label><input id="admEditRegPosGeneral" placeholder="Ej: 5º" value="${editing.posicion_general||''}"></div>
+          <div class="field"><label>Clasificación categoría</label><input id="admEditRegPosCategoria" placeholder="Ej: 2º" value="${editing.posicion_categoria||''}"></div>
           <div class="field full"><label>Sesión</label><select id="admEditRegSession">${editSessions.map(s=>`<option value="${s.id}" ${s.id===editing.session_id?'selected':''}>${s.nombre||s.id} · ${s.fecha_hora?new Date(s.fecha_hora).toLocaleString('es-ES'):'sin fecha'}</option>`).join('')}</select></div>
         </div>
         <div class="form-actions">
@@ -1103,9 +1162,14 @@ async function adminSaveRegistration(){
     nacionalidad_copiloto:val('admEditRegCoNat'),
     categoria:val('admEditRegCategory'),
     coche:val('admEditRegCar'),
-    session_id:val('admEditRegSession')
+    session_id:val('admEditRegSession'),
+    posicion_general:val('admEditRegPosGeneral'),
+    posicion_categoria:val('admEditRegPosCategoria')
   };
-  if(!payload.copiloto||!payload.nacionalidad_copiloto||!payload.categoria||!payload.coche||!payload.session_id)return toast('Rellena todos los datos de la inscripción.');
+  const reg=adminState.registrations.find(r=>r.id===id);
+  const ev=adminState.events.find(e=>e.id===reg?.event_id);
+  const requiereCopiloto = ev?.requiere_copiloto !== false;
+  if(!payload.categoria||!payload.coche||!payload.session_id||(requiereCopiloto&&(!payload.copiloto||!payload.nacionalidad_copiloto)))return toast('Rellena los campos obligatorios.');
   const {error}=await supabaseClient.from('registrations').update(payload).eq('id',id);
   if(error)return toast(error.message);
   toast('Inscripción actualizada.');
@@ -1477,7 +1541,7 @@ async function showPilotModal(name, avatar='', pilotId=''){
   const target=normalizeNameForMatch(name);
   try{
     const [regRes, profileRes, eventsRes, sessionsRes]=await Promise.all([
-      withTimeout(supabaseClient.from('registrations').select('id,event_id,pilot_id,categoria,coche,session_id,created_at').order('created_at',{ascending:false}),9000,'historial inscripciones'),
+      withTimeout(supabaseClient.from('registrations').select('*').order('created_at',{ascending:false}),9000,'historial inscripciones'),
       withTimeout(supabaseClient.from('profiles').select('id,nombre,apellido,email,equipo'),9000,'historial perfiles'),
       withTimeout(supabaseClient.from('events').select('id,nombre,subtitulo,championship_id'),9000,'historial eventos'),
       withTimeout(supabaseClient.from('sessions').select('id,nombre,fecha_hora,event_id'),9000,'historial sesiones')
@@ -1502,7 +1566,20 @@ async function showPilotModal(name, avatar='', pilotId=''){
     $('pilotModalHistory').innerHTML=regs.map(r=>{
       const ev=events.find(e=>e.id===r.event_id)||{};
       const se=sessions.find(x=>x.id===r.session_id)||{};
-      return `<div class="pilot-history-item"><b>${ev.nombre||r.event_id||'Evento'}</b><span><b>Categoría:</b> ${r.categoria||'-'} · <b>Coche:</b> ${r.coche||'-'}</span></div>`;
+      const generalPos=r.posicion_general||r.clasificacion_general||r.resultado_general||r.pos_general||'—';
+      const categoryPos=r.posicion_categoria||r.clasificacion_categoria||r.resultado_categoria||r.pos_categoria||'—';
+      return `<div class="pilot-history-item">
+        <div class="pilot-history-top">
+          <div>
+            <div class="pilot-history-event">${ev.nombre||r.event_id||'Evento'}</div>
+            <div class="pilot-history-car">${r.categoria||'-'} · ${r.coche||'-'}</div>
+          </div>
+        </div>
+        <div class="pilot-history-results">
+          <div class="pilot-result-box"><span>Clasificación general</span><b>${generalPos}</b></div>
+          <div class="pilot-result-box"><span>Clasificación categoría</span><b>${categoryPos}</b></div>
+        </div>
+      </div>`;
     }).join('');
   }catch(e){
     $('pilotModalHistory').innerHTML=`<p class="team-empty">No se pudo cargar el historial: ${e.message}</p>`;
