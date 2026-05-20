@@ -201,7 +201,7 @@ textarea{width:100%;min-height:110px;border:1px solid var(--border);border-radiu
 </section>
 <section class="page" id="event"><div id="eventContent"></div></section>
 <section class="page" id="login"><div class="form-card"><p class="eyebrow">Acceso pilotos y admin</p><h1>Login</h1><p class="empty">Entra con tu correo y contraseña.</p><div class="form-grid"><div class="field full"><label>Email</label><input id="loginEmail" placeholder="piloto@email.com" type="email"/></div><div class="field full"><label>Contraseña</label><input id="loginPassword" placeholder="Tu contraseña" type="password"/></div></div><div class="form-actions"><button class="ghost-btn" onclick="showPage('register')">Crear cuenta piloto</button><button class="ghost-btn" onclick="resetPassword()">Restablecer contraseña</button><button class="submit-btn" onclick="loginUser()">Entrar</button></div></div></section>
-<section class="page" id="register"><div class="form-card"><p class="eyebrow">Nuevo piloto</p><h1>Registro</h1><div class="form-grid"><div class="field"><label>Nombre</label><input id="regName"/></div><div class="field"><label>Apellido</label><input id="regLastName"/></div><div class="field"><label>Steam ID</label><input id="regSteam" inputmode="numeric" maxlength="17" oninput="onlyDigits17(this)" pattern="\d{17}" placeholder="17 dígitos"/></div><div class="field"><label>Licencia de piloto</label><input id="regLicense"/></div><div class="field"><label>Equipo</label><input id="regTeam"/></div><div class="field"><label>Licencia de equipo</label><input id="regTeamLicense"/></div><div class="field"><label>Nacionalidad</label><select id="regNationality" onchange="toggleCcaaField('regNationality','regCcaaWrap')">
+<section class="page" id="register"><div class="form-card"><p class="eyebrow">Nuevo piloto</p><h1>Registro</h1><div class="form-grid"><div class="field"><label>Nombre</label><input id="regName"/></div><div class="field"><label>Apellido</label><input id="regLastName"/></div><div class="field"><label>Steam ID</label><input id="regSteam" inputmode="numeric" maxlength="17" oninput="onlyDigits17(this)" pattern="\d{17}" placeholder="17 dígitos"/></div><div class="field"><label>Licencia de piloto</label><input id="regLicense" required/></div><div class="field"><label>Equipo</label><input id="regTeam"/></div><div class="field"><label>Licencia de equipo</label><input id="regTeamLicense"/></div><div class="field"><label>Nacionalidad</label><select id="regNationality" onchange="toggleNationalityFields('regNationality','regCcaaWrap','regNationalityOtherWrap')">
 <option value="Albania">Albania</option>
 <option value="Alemania">Alemania</option>
 <option value="Andorra">Andorra</option>
@@ -265,8 +265,8 @@ textarea{width:100%;min-height:110px;border:1px solid var(--border);border-radiu
 <option value="Ucrania">Ucrania</option>
 <option value="Uruguay">Uruguay</option>
 <option value="Vaticano">Vaticano</option>
-</select></div><div class="field hidden" id="regCcaaWrap"><label>Comunidad autónoma</label><select id="regCcaa"></select></div><div class="field"><label>Email</label><input id="regEmail" type="email"/></div><div class="field full"><label>Contraseña</label><input id="regPassword" type="password"/></div></div><div class="form-actions"><button class="ghost-btn" onclick="showPage('home')">Cancelar</button><button class="submit-btn" onclick="registerUser()">Registrarme</button></div></div></section>
-<section class="page" id="entry"><div class="form-card"><p class="eyebrow">Inscripción a prueba</p><h1 id="entryTitle">Inscripción</h1><p class="empty">Recuerda que una vez realizada la inscripción, solo podrás cambiar 1 vez de sesión y de coche</p><div class="form-grid"><div class="field" id="coDriverWrap"><label>Copiloto</label><input id="coDriver"/></div><div class="field" id="coNationalityWrap"><label>Nacionalidad copiloto</label><select id="coNationality" onchange="toggleCcaaField('coNationality','coCcaaWrap')">
+</select></div><div class="field hidden" id="regCcaaWrap"><label>Comunidad autónoma</label><select id="regCcaa"></select></div><div class="field hidden" id="regNationalityOtherWrap"><label>Otra nacionalidad</label><input id="regNationalityOther" placeholder="Escribe la nacionalidad"/></div><div class="field"><label>Email</label><input id="regEmail" type="email"/></div><div class="field full"><label>Contraseña</label><input id="regPassword" type="password"/></div></div><div class="form-actions"><button class="ghost-btn" onclick="showPage('home')">Cancelar</button><button class="submit-btn" onclick="registerUser()">Registrarme</button></div></div></section>
+<section class="page" id="entry"><div class="form-card"><p class="eyebrow">Inscripción a prueba</p><h1 id="entryTitle">Inscripción</h1><p class="empty">Recuerda que una vez realizada la inscripción, solo podrás cambiar 1 vez de sesión y de coche</p><div class="form-grid"><div class="field" id="coDriverWrap"><label>Copiloto</label><input id="coDriver"/></div><div class="field" id="coNationalityWrap"><label>Nacionalidad copiloto</label><select id="coNationality" onchange="toggleNationalityFields('coNationality','coCcaaWrap','coNationalityOtherWrap')">
 <option value="Albania">Albania</option>
 <option value="Alemania">Alemania</option>
 <option value="Andorra">Andorra</option>
@@ -330,7 +330,7 @@ textarea{width:100%;min-height:110px;border:1px solid var(--border);border-radiu
 <option value="Ucrania">Ucrania</option>
 <option value="Uruguay">Uruguay</option>
 <option value="Vaticano">Vaticano</option>
-</select></div><div class="field hidden" id="coCcaaWrap"><label>Comunidad autónoma copiloto</label><select id="coCcaa"></select></div><div class="field"><label>Categoría</label><select id="categorySelect"></select></div><div class="field"><label>Coche</label><select id="carSelect"></select></div><div class="field full"><label>Sesión</label><select id="sessionSelect"></select></div></div><div class="form-actions"><button class="ghost-btn" onclick="openEvent(currentEventId)">Volver al evento</button><button class="submit-btn" onclick="confirmEntry()">Confirmar inscripción</button></div></div></section>
+</select></div><div class="field hidden" id="coCcaaWrap"><label>Comunidad autónoma copiloto</label><select id="coCcaa"></select></div><div class="field hidden" id="coNationalityOtherWrap"><label>Otra nacionalidad copiloto</label><input id="coNationalityOther" placeholder="Escribe la nacionalidad"/></div><div class="field"><label>Categoría</label><select id="categorySelect"></select></div><div class="field"><label>Coche</label><select id="carSelect"></select></div><div class="field full"><label>Sesión</label><select id="sessionSelect"></select></div></div><div class="form-actions"><button class="ghost-btn" onclick="openEvent(currentEventId)">Volver al evento</button><button class="submit-btn" onclick="confirmEntry()">Confirmar inscripción</button></div></div></section>
 <section class="page" id="profile"><div class="form-card"><p class="eyebrow">Área de piloto</p><h1>Mi perfil</h1><div class="form-grid"><div class="field"><label>Nombre</label><input id="profileName"/></div><div class="field"><label>Apellido</label><input id="profileLastName"/></div><div class="field"><label>Steam ID</label><input id="profileSteam" inputmode="numeric" maxlength="17" oninput="onlyDigits17(this)" pattern="\d{17}" placeholder="17 dígitos"/></div><div class="field"><label>Licencia de piloto</label><input id="profileLicense"/></div><div class="field"><label>Equipo</label><input id="profileTeam"/></div><div class="field"><label>Licencia de equipo</label><input id="profileTeamLicense"/></div><div class="field"><label>Nacionalidad</label><select id="profileNationality" onchange="toggleCcaaField('profileNationality','profileCcaaWrap')">
 <option value="Albania">Albania</option>
 <option value="Alemania">Alemania</option>
@@ -521,12 +521,34 @@ function fillSelect(id,items,placeholder="Selecciona una opción"){
   if(current) el.value=current;
 }
 function initNationalitySelects(){
-  ["regNationality","profileNationality","coNationality"].forEach(id=>fillSelect(id,EUROPEAN_NATIONALITIES,"Selecciona nacionalidad"));
+  ["regNationality","coNationality"].forEach(id=>fillSelect(id,[...EUROPEAN_NATIONALITIES,"Otro"],"Selecciona nacionalidad"));
+  fillSelect("profileNationality",EUROPEAN_NATIONALITIES,"Selecciona nacionalidad");
   ["regCcaa","profileCcaa","coCcaa"].forEach(id=>fillSelect(id,SPAIN_CCAA,"Selecciona comunidad autónoma"));
 }
 function toggleCcaaField(selectId,wrapId){
   const sel=$(selectId), wrap=$(wrapId); if(!sel||!wrap)return;
   wrap.classList.toggle("hidden", sel.value!=="España");
+}
+function toggleNationalityFields(selectId,ccaaWrapId,otherWrapId){
+  const sel=$(selectId), ccaaWrap=$(ccaaWrapId), otherWrap=$(otherWrapId);
+  if(!sel)return;
+  if(ccaaWrap)ccaaWrap.classList.toggle("hidden", sel.value!=="España");
+  if(otherWrap)otherWrap.classList.toggle("hidden", sel.value!=="Otro");
+}
+function nationalityValue(selectId,otherId){
+  const selected=$(selectId)?.value||"";
+  return selected==="Otro" ? ($(otherId)?.value||"").trim() : selected;
+}
+function setNationalityValue(selectId,otherId,ccaaWrapId,otherWrapId,value){
+  const sel=$(selectId); if(!sel)return;
+  if(value && ![...sel.options].some(option=>option.value===value)){
+    sel.value="Otro";
+    if($(otherId))$(otherId).value=value;
+  }else{
+    sel.value=value||"";
+    if($(otherId))$(otherId).value="";
+  }
+  toggleNationalityFields(selectId,ccaaWrapId,otherWrapId);
 }
 function onlyDigits17(input){input.value=input.value.replace(/\D/g,"").slice(0,17)}
 function validateSteamId(value){return /^\d{17}$/.test(value)}
@@ -731,7 +753,7 @@ function startSessionChange(id){
   entryMode="session";
   $("entryTitle").textContent="Cambiar sesión · "+e.name;
   $("coDriver").value=entry.coDriver||"";$("coDriver").disabled=true;
-  $("coNationality").value=entry.coNationality||"";$("coCcaa").value=entry.coCcaa||"";toggleCcaaField("coNationality","coCcaaWrap");$("coNationality").disabled=true;$("coCcaa").disabled=true;
+  setNationalityValue("coNationality","coNationalityOther","coCcaaWrap","coNationalityOtherWrap",entry.coNationality||"");$("coCcaa").value=entry.coCcaa||"";$("coNationality").disabled=true;$("coCcaa").disabled=true;if($("coNationalityOther"))$("coNationalityOther").disabled=true;
   $("categorySelect").innerHTML=`<option>${entry.category}</option>`;$("categorySelect").disabled=true;
   $("carSelect").innerHTML=`<option>${entry.car}</option>`;$("carSelect").disabled=true;
   $("sessionSelect").innerHTML=e.sessions.map(s=>`<option value="${s.id}" ${s.id===entry.sessionId?"selected":""}>${s.name} · ${s.date} · ${s.time} · ${s.taken}/${s.max}</option>`).join("");
@@ -746,7 +768,7 @@ function startVehicleChange(id){
   entryMode="vehicle";
   $("entryTitle").textContent="Cambiar coche y categoría · "+e.name;
   $("coDriver").value=entry.coDriver||"";$("coDriver").disabled=true;
-  $("coNationality").value=entry.coNationality||"";$("coCcaa").value=entry.coCcaa||"";toggleCcaaField("coNationality","coCcaaWrap");$("coNationality").disabled=true;$("coCcaa").disabled=true;
+  setNationalityValue("coNationality","coNationalityOther","coCcaaWrap","coNationalityOtherWrap",entry.coNationality||"");$("coCcaa").value=entry.coCcaa||"";$("coNationality").disabled=true;$("coCcaa").disabled=true;if($("coNationalityOther"))$("coNationalityOther").disabled=true;
   $("categorySelect").innerHTML=e.categories.map(c=>`<option value="${c.id}" ${c.name===entry.category?"selected":""}>${c.name}</option>`).join("");
   $("categorySelect").disabled=false;$("categorySelect").onchange=updateEntryCars;updateEntryCars();
   [...$("carSelect").options].forEach(o=>{ if(o.value===entry.car) o.selected=true; });
@@ -756,8 +778,8 @@ function startVehicleChange(id){
   showPage("entry");
 }
 function resetEntryFormState(){
-  ["coDriver","coNationality","coCcaa","categorySelect","carSelect","sessionSelect"].forEach(id=>{if($(id))$(id).disabled=false});
-  $("coDriver").value="";$("coNationality").value="";$("coCcaa").value="";toggleCcaaField("coNationality","coCcaaWrap");
+  ["coDriver","coNationality","coNationalityOther","coCcaa","categorySelect","carSelect","sessionSelect"].forEach(id=>{if($(id))$(id).disabled=false});
+  $("coDriver").value="";$("coNationality").value="";if($("coNationalityOther"))$("coNationalityOther").value="";$("coCcaa").value="";toggleNationalityFields("coNationality","coCcaaWrap","coNationalityOtherWrap");
 }
 function eventNeedsCodriver(event){return event?.requiereCopiloto!==false}
 function toggleEntryCodriverFields(event){
@@ -766,8 +788,10 @@ function toggleEntryCodriverFields(event){
   if(!required){
     if($("coDriver"))$("coDriver").value="";
     if($("coNationality"))$("coNationality").value="";
+    if($("coNationalityOther"))$("coNationalityOther").value="";
     if($("coCcaa"))$("coCcaa").value="";
     if($("coCcaaWrap"))$("coCcaaWrap").classList.add("hidden");
+    if($("coNationalityOtherWrap"))$("coNationalityOtherWrap").classList.add("hidden");
   }
 }
 function startEntry(id){
@@ -791,12 +815,12 @@ async function registerUser(){
   const email=$("regEmail").value.trim(),
         password=$("regPassword").value,
         steam=$("regSteam").value.trim(),
-        nationality=$("regNationality").value,
+        nationality=nationalityValue("regNationality","regNationalityOther"),
         ccaa=$("regCcaa").value;
 
-  if(!email||!password||!$("regName").value.trim()||!$("regLastName").value.trim())return toast("Rellena nombre, apellido, email y contraseña.");
+  if(!email||!password||!$("regName").value.trim()||!$("regLastName").value.trim()||!$("regLicense").value.trim())return toast("Rellena nombre, apellido, licencia de piloto, email y contraseña.");
   if(!validateSteamId(steam))return toast("El Steam ID debe tener exactamente 17 dígitos numéricos.");
-  if(!nationality)return toast("Selecciona la nacionalidad.");
+  if(!nationality)return toast("Selecciona o escribe la nacionalidad.");
   if(nationality==="España"&&!ccaa)return toast("Selecciona la comunidad autónoma.");
 
   const profilePayload={
@@ -948,7 +972,8 @@ async function confirmEntry(){
   if(existing)return toast("Ya estás inscrito en esta prueba.");
   const categoryOption=$("categorySelect").selectedOptions[0];
   const needsCodriver=eventNeedsCodriver(e);
-  const entry={coDriver:needsCodriver?$("coDriver").value.trim():"",coNationality:needsCodriver?$("coNationality").value:"",coCcaa:needsCodriver&&$("coNationality").value==="España"?$("coCcaa").value:"",category:categoryOption?categoryOption.textContent:$("categorySelect").value,car:$("carSelect").value,sessionId:$("sessionSelect").value,createdAt:new Date().toISOString(),sessionChangeCount:0,vehicleChangeCount:0};
+  const coNationalityValue=needsCodriver?nationalityValue("coNationality","coNationalityOther"):"";
+  const entry={coDriver:needsCodriver?$("coDriver").value.trim():"",coNationality:coNationalityValue,coCcaa:needsCodriver&&$("coNationality").value==="España"?$("coCcaa").value:"",category:categoryOption?categoryOption.textContent:$("categorySelect").value,car:$("carSelect").value,sessionId:$("sessionSelect").value,createdAt:new Date().toISOString(),sessionChangeCount:0,vehicleChangeCount:0};
   if(needsCodriver&&!entry.coDriver||needsCodriver&&!entry.coNationality)return toast("Rellena copiloto y nacionalidad del copiloto.");if(needsCodriver&&entry.coNationality==="España"&&!entry.coCcaa)return toast("Selecciona la comunidad autónoma del copiloto.");
   const {error}=await supabaseClient.from("registrations").insert({event_id:currentEventId,pilot_id:currentUser.id,copiloto:entry.coDriver,nacionalidad_copiloto:entry.coNationality,copiloto_comunidad_autonoma:entry.coCcaa,categoria:entry.category,coche:entry.car,session_id:entry.sessionId});
   if(error)return toast(error.message);
