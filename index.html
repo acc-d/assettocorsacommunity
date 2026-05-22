@@ -618,6 +618,7 @@ function isCrsvChampionship(championshipId){
 function isDesafioOnlyResult(row){return row?.solo_desafio_peugeot===true||isDesafioCategory(row?.category||row?.categoria)}
 function isDesafioOnlyHistoryEvent(name){const n=normalizeDriverName(name);return n==='rallysprint serras fafe'||n==='rallysprint misiones'}
 function isParticipationResult(value){const v=String(value||'').trim().toUpperCase();return !!v&&v!=='NP'}
+function displayHistoryCategory(value){return isDesafioCategory(value)?'Rally4':(value||'-')}
 function profileByManualResult(result){
   if(result.pilot_id)return standingsState.profiles.find(p=>p.id===result.pilot_id)||null;
   const license=normalizePilotLicense(result.licencia_piloto||result.pilot_license);
@@ -2115,7 +2116,7 @@ async function showPilotModal(name, avatar='', pilotId=''){
     }).forEach(r=>{
       const ev=events.find(e=>e.id===r.event_id)||{};
       const se=sessions.find(x=>x.id===r.session_id)||{};
-      const item=ensureHistory(ev.nombre||r.event_id||'Evento',se.fecha_hora?new Date(se.fecha_hora).getTime():0,(r.categoria||'-')+' - '+(r.coche||'-'));
+      const item=ensureHistory(ev.nombre||r.event_id||'Evento',se.fecha_hora?new Date(se.fecha_hora).getTime():0,displayHistoryCategory(r.categoria)+' - '+(r.coche||'-'));
       item.general=r.posicion_general||r.clasificacion_general||r.resultado_general||r.pos_general||'-';
       item.category=r.posicion_categoria||r.clasificacion_categoria||r.resultado_categoria||r.pos_categoria||'-';
       if(r.posicion_desafio_peugeot)item.desafio=r.posicion_desafio_peugeot;
@@ -2126,7 +2127,7 @@ async function showPilotModal(name, avatar='', pilotId=''){
       return normalizeNameForMatch(r.pilot_name)===target;
     }).forEach(r=>{
       if(!isParticipationResult(r.posicion_general)&&!isParticipationResult(r.posicion_categoria)&&!isParticipationResult(r.posicion_desafio_peugeot))return;
-      const item=ensureHistory(r.event_name||'Prueba anterior',r.created_at?new Date(r.created_at).getTime():0,(r.category||r.categoria||'-'));
+      const item=ensureHistory(r.event_name||'Prueba anterior',r.created_at?new Date(r.created_at).getTime():0,displayHistoryCategory(r.category||r.categoria));
       if(r.posicion_general)item.general=r.posicion_general;
       if(!isDesafioOnlyResult(r)&&r.posicion_categoria)item.category=r.posicion_categoria;
       if(r.posicion_desafio_peugeot)item.desafio=r.posicion_desafio_peugeot;
