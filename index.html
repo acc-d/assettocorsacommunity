@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 
 <html lang="es">
 <head>
@@ -764,11 +764,11 @@ function renderTeamStandingTable(championshipId){
 function renderStandingTable(championshipId,view){
   const champEvents=standingEvents(championshipId,view);
   const rows=standingRows(championshipId,view);
-  if(!champEvents.length)return '<div class="standings-empty">Este campeonato todav�a no tiene pruebas.</div>';
+  if(!champEvents.length)return '<div class="standings-empty">Este campeonato todavï¿½a no tiene pruebas.</div>';
   const head1=`<tr><th rowspan="2">N&ordm;</th><th rowspan="2">Piloto</th>${champEvents.map(e=>`<th class="event-head" colspan="2">${escapeAttr(e.nombre||e.id)}</th>`).join('')}<th rowspan="2">Total puntos</th></tr>`;
   const head2=`<tr>${champEvents.map(()=>'<th class="sub-head event-start">POS.</th><th class="sub-head">PTOS</th>').join('')}</tr>`;
   const body=rows.map((row,index)=>`<tr><td>${index+1}</td><td class="driver-cell"><b>${escapeAttr(row.name)}</b></td>${champEvents.map(e=>{const result=row.events[e.id]||{};return `<td class="event-start">${result.label||'-'}</td><td>${result.points||0}</td>`}).join('')}<td class="total-cell">${row.total}</td></tr>`).join('');
-  return `<div class="standings-table-wrap"><table class="standings-table"><thead>${head1}${head2}</thead><tbody>${body||`<tr><td colspan="${champEvents.length*2+3}">Todav�a no hay resultados para esta clasificaci�n.</td></tr>`}</tbody></table></div>`;
+  return `<div class="standings-table-wrap"><table class="standings-table"><thead>${head1}${head2}</thead><tbody>${body||`<tr><td colspan="${champEvents.length*2+3}">Todavï¿½a no hay resultados para esta clasificaciï¿½n.</td></tr>`}</tbody></table></div>`;
 }
 function setStandingsChampionship(value){standingsState.selectedChampionshipId=value;standingsState.selectedView='general';renderStandings()}
 function setStandingsView(value){standingsState.selectedView=value;renderStandings()}
@@ -783,6 +783,10 @@ function renderStandings(){
 }
 function scrollToEvents(){$("eventsBlock").scrollIntoView({behavior:"smooth"})}
 function getSpainTime(){const now=new Date();return new Date(now.toLocaleString("en-US",{timeZone:"Europe/Madrid"}))}
+function getSpainWallTime(value){if(!value)return null;const date=new Date(value);if(Number.isNaN(date.getTime()))return null;return new Date(date.toLocaleString("en-US",{timeZone:"Europe/Madrid"}))}
+function registrationHasOpened(event){const open=getSpainWallTime(event?.registrationOpenRaw);return !open||getSpainTime()>=open}
+function registrationHasClosed(event){const close=getSpainWallTime(event?.registrationCloseRaw);return !!close&&getSpainTime()>=close}
+function isRegistrationOpen(event){return registrationHasOpened(event)&&!registrationHasClosed(event)}
 function isFileVisible(file){const now=getSpainTime();if(file.visibleFrom&&now<new Date(file.visibleFrom))return false;if(file.visibleUntil&&now>new Date(file.visibleUntil))return false;return true}
 function getCountdownText(file){const now=getSpainTime();if(!file.visibleFrom||now>=new Date(file.visibleFrom))return "";const totalSeconds=Math.max(0,Math.ceil((new Date(file.visibleFrom)-now)/1000));const d=Math.floor(totalSeconds/86400),h=Math.floor((totalSeconds%86400)/3600),m=Math.floor((totalSeconds%3600)/60),s=totalSeconds%60;if(d>0)return `Disponible en ${d}d ${h}h`;if(h>0)return `Disponible en ${h}h ${m}m`;if(m>0)return `Disponible en ${m}m ${s}s`;return `Disponible en ${s}s`}
 
@@ -912,7 +916,7 @@ function openEvent(id){currentEventId=id;const e=events.find(x=>x.id===id);if(!e
 <div class="notice"><b>Ya estás inscrito.</b><br>Sesión: ${e.sessions.find(s=>s.id===entry.sessionId)?.name||"—"}<br>Categoría: ${entry.category}<br>Coche: ${entry.car}</div>
 <button class="wide-btn ${canChangeSession(e,entry)?'primary':''}" ${canChangeSession(e,entry)?`onclick="startSessionChange('${e.id}')"`:"disabled"}>Cambiar sesión ${entry.sessionChangeCount||0}/1</button>
 <button class="wide-btn ${canChangeVehicle(e,entry)?'primary':''}" ${canChangeVehicle(e,entry)?`onclick="startVehicleChange('${e.id}')"`:"disabled"}>Cambiar coche/categoría ${entry.vehicleChangeCount||0}/1</button>
-`:`<button class="wide-btn primary" onclick="startEntry('${e.id}')">Inscribirse</button>`}<button class="wide-btn" onclick="showPage('home')">← Volver a eventos</button></div></aside></div>`;showPage("event")}
+`:`<button class="wide-btn ${isRegistrationOpen(e)?"primary":""}" ${isRegistrationOpen(e)?`onclick="startEntry('${e.id}')"`:"disabled"}>${registrationHasClosed(e)?"Inscripciones cerradas":(!registrationHasOpened(e)?"Inscripciones no abiertas":"Inscribirse")}</button>`}<button class="wide-btn" onclick="showPage('home')">Volver a eventos</button></div></aside></div>`;showPage("event")}
 function refreshSessionFilesOnly(){const box=$("sessionFilesBox");if(!box)return;const e=events.find(x=>x.id===currentEventId);if(!e)return;box.innerHTML=renderSessionFiles(e)}
 function updateEntryCars(){
   const e=events.find(x=>x.id===currentEventId);
@@ -947,8 +951,7 @@ function canChangeSession(event,entry){
 function canChangeVehicle(event,entry){
   if(!entry)return false;
   if((entry.vehicleChangeCount||0)>=1)return false;
-  if(!event.registrationCloseRaw)return true;
-  return getSpainTime()<=new Date(event.registrationCloseRaw);
+  return !registrationHasClosed(event);
 }
 function startSessionChange(id){
   const e=events.find(x=>x.id===id), entry=getEntry(id);
@@ -1005,6 +1008,7 @@ function startEntry(id){
   if(getEntry(id)){toast("Ya estás inscrito. Usa los botones de cambio disponibles en el resumen del evento.");return}
   const e=events.find(x=>x.id===id);
   if(!e){toast("Evento no encontrado.");return}
+  if(!isRegistrationOpen(e))return toast(registrationHasClosed(e)?"Las inscripciones de esta prueba ya estan cerradas.":"Las inscripciones de esta prueba todavia no estan abiertas.");
   if(!e.sessions.length){toast("Este evento todavía no tiene sesiones configuradas.");return}
   if(!e.categories.length||!e.cars.length){toast("El campeonato de este evento todavía no tiene coches o categorías configuradas.");return}
   $("entryTitle").textContent=e.name;
@@ -1146,7 +1150,10 @@ async function recordRegistrationChange(payload){
 }
 async function confirmEntry(){
   if(!currentUser)return toast("Debes iniciar sesión.");
+  await loadPublicEvents();
+  await loadMyRegistrations();
   const e=events.find(x=>x.id===currentEventId);
+  if(!e)return toast("Evento no encontrado.");
   const existing=getEntry(currentEventId);
 
   if(entryMode==="session"){
@@ -1174,6 +1181,7 @@ async function confirmEntry(){
   }
 
   if(existing)return toast("Ya estás inscrito en esta prueba.");
+  if(!isRegistrationOpen(e))return toast(registrationHasClosed(e)?"Las inscripciones de esta prueba ya estan cerradas.":"Las inscripciones de esta prueba todavia no estan abiertas.");
   const categoryOption=$("categorySelect").selectedOptions[0];
   const needsCodriver=eventNeedsCodriver(e);
   const coNationalityValue=needsCodriver?nationalityValue("coNationality","coNationalityOther"):"";
@@ -1339,9 +1347,9 @@ async function adminLoadRegistrationChanges(registrationIds){
 }
 function adminSessionLabel(sessionId){
   const s=adminState.sessions.find(x=>x.id===sessionId);
-  return s ? (s.nombre||s.id) : (sessionId||'�');
+  return s ? (s.nombre||s.id) : (sessionId||'ï¿½');
 }
-function adminChangeValue(value){return value||value===0?escapeAttr(value):'�'}
+function adminChangeValue(value){return value||value===0?escapeAttr(value):'ï¿½'}
 function adminNormalizeRegistrationChange(change){
   const type=String(change.change_type||change.tipo||change.type||change.kind||'').toLowerCase();
   const oldSession=change.old_session_id||change.session_id_old||change.sesion_anterior||change.old_session;
@@ -1383,20 +1391,20 @@ function adminRenderHistoryTable(type,changes,registration){
     return `<tr><td>${adminChangeValue(c.oldCategory)}</td><td>${adminChangeValue(c.oldCar)}</td><td>${adminChangeValue(c.newCategory)}</td><td>${adminChangeValue(c.newCar)}</td><td>${dateText}</td></tr>`;
   }).join('');
   const head=type==='session'
-    ? '<tr><th>Sesi�n anterior</th><th>Sesi�n nueva</th><th>Fecha</th></tr>'
-    : '<tr><th>Categor�a anterior</th><th>Coche anterior</th><th>Categor�a nueva</th><th>Coche nuevo</th><th>Fecha</th></tr>';
+    ? '<tr><th>Sesiï¿½n anterior</th><th>Sesiï¿½n nueva</th><th>Fecha</th></tr>'
+    : '<tr><th>Categorï¿½a anterior</th><th>Coche anterior</th><th>Categorï¿½a nueva</th><th>Coche nuevo</th><th>Fecha</th></tr>';
   return `<table class="history-table"><thead>${head}</thead><tbody>${rows}</tbody></table>`;
 }
 function openRegistrationHistoryModal(registrationId){
   const registration=adminState.registrations.find(r=>r.id===registrationId);
-  if(!registration)return toast('No encuentro esta inscripci�n.');
+  if(!registration)return toast('No encuentro esta inscripciï¿½n.');
   const profile=adminState.profiles.find(p=>p.id===registration.pilot_id)||{};
   const changes=adminRegistrationChangesFor(registrationId);
   $('registrationHistoryTitle').textContent='Historial de cambios';
-  $('registrationHistorySubtitle').textContent=`${profile.nombre||''} ${profile.apellido||''} � ${profile.licencia_piloto||registration.pilot_id||''}`;
+  $('registrationHistorySubtitle').textContent=`${profile.nombre||''} ${profile.apellido||''} ï¿½ ${profile.licencia_piloto||registration.pilot_id||''}`;
   $('registrationHistoryBody').innerHTML=`
-    <section class="history-section"><h4>Cambios de sesi�n</h4>${adminRenderHistoryTable('session',changes,registration)}</section>
-    <section class="history-section"><h4>Cambios de coche / categor�a</h4>${adminRenderHistoryTable('vehicle',changes,registration)}</section>`;
+    <section class="history-section"><h4>Cambios de sesiï¿½n</h4>${adminRenderHistoryTable('session',changes,registration)}</section>
+    <section class="history-section"><h4>Cambios de coche / categorï¿½a</h4>${adminRenderHistoryTable('vehicle',changes,registration)}</section>`;
   $('registrationHistoryModal').classList.add('visible');
 }
 function closeRegistrationHistoryModal(event){
@@ -1413,7 +1421,7 @@ async function adminSetRegistrationApproval(id,status){
   const label=status==="approved"?"aceptada":"pendiente";
   const {error}=await supabaseClient.from('registrations').update({approval_status:status}).eq('id',id);
   if(error)return toast(error.message);
-  toast('Inscripci�n '+label+'.');
+  toast('Inscripciï¿½n '+label+'.');
   await loadMyRegistrations();
   await loadPublicEvents();
   await adminRegistrations();
@@ -1725,8 +1733,10 @@ function adminEditCategory(id,championshipId){const c=adminState.categories.find
 function adminClearCategoryForm(){$('admCategoryEditing').value='';$('admCategoryName').value=''}
 async function adminSaveCategory(){if(!val('admCategoryName'))return toast('Escribe el nombre de la categoría.');if(!val('admCategoryChampionship'))return toast('Crea o selecciona un campeonato.');const editing=val('admCategoryEditing');let category;if(editing){const {data,error}=await supabaseClient.from('categories').update({nombre:val('admCategoryName')}).eq('id',editing).select('*').limit(1);if(error)return toast(error.message);category=data?.[0]}else{const {data,error}=await supabaseClient.from('categories').upsert({nombre:val('admCategoryName')},{onConflict:'nombre'}).select('*').limit(1);if(error)return toast(error.message);category=data?.[0]}if(category){const {error:linkError}=await supabaseClient.from('championship_categories').upsert({championship_id:val('admCategoryChampionship'),category_id:category.id});if(linkError)return toast(linkError.message)}toast('Categoría guardada.');await adminCategories()}
 async function adminDeleteCategory(id){if(!confirm('¿Borrar categoría?'))return;const {error}=await supabaseClient.from('categories').delete().eq('id',id);if(error)return toast(error.message);await adminCategories()}
-async function adminFiles(){await adminLoadBase();adminState.files=await adminFetch('session_files','*','created_at',false);const sessionOptions=adminState.sessions.map(s=>`<option value="${s.id}">${s.event_id} · ${s.nombre} · ${new Date(s.fecha_hora).toLocaleString('es-ES')}</option>`).join('');$('adminPanelBody').innerHTML=`<div class="admin-two"><div class="admin-box"><h3>📦 Añadir archivo programado</h3><div class="form-grid"><div class="field full"><label>Sesión</label><select id="admFileSession">${sessionOptions}</select></div><div class="field"><label>Título</label><input id="admFileTitle" placeholder="Pack Skins"></div><div class="field"><label>Texto botón</label><input id="admFileButton" value="Descargar"></div><div class="field full"><label>Descripción</label><input id="admFileDesc" placeholder="Archivo correspondiente a esta sesión"></div><div class="field full"><label>URL</label><input id="admFileUrl" placeholder="https://drive.google.com/..."></div><div class="field"><label>Visible desde</label><input id="admFileFrom" type="datetime-local"></div><div class="field"><label>Visible hasta</label><input id="admFileUntil" type="datetime-local"></div></div><div class="form-actions"><button class="submit-btn" onclick="adminSaveFile()">Guardar archivo</button></div></div><div class="admin-box"><h3>Archivos programados</h3><div class="admin-list">${adminState.files.map(f=>{const s=adminState.sessions.find(x=>x.id===f.session_id)||{};return `<div class="admin-list-item"><span><b>${f.titulo}</b><br><small>${s.event_id||''} · ${s.nombre||f.session_id}<br>Desde: ${f.visible_from?new Date(f.visible_from).toLocaleString('es-ES'):'—'} · Hasta: ${f.visible_until?new Date(f.visible_until).toLocaleString('es-ES'):'—'}</small></span><button class="ghost-btn" onclick="adminDeleteFile('${f.id}')">Borrar</button></div>`}).join('')||'<div class="admin-list-item"><span>No hay archivos.</span></div>'}</div></div></div>`}
-async function adminSaveFile(){const payload={session_id:val('admFileSession'),titulo:val('admFileTitle'),descripcion:val('admFileDesc'),boton:val('admFileButton')||'Descargar',url:val('admFileUrl'),visible_from:dateLocalToIso(val('admFileFrom')),visible_until:dateLocalToIso(val('admFileUntil'))};if(!payload.session_id||!payload.titulo||!payload.url)return toast('Sesión, título y URL son obligatorios.');const {error}=await supabaseClient.from('session_files').insert(payload);if(error)return toast(error.message);toast('Archivo programado.');await adminFiles()}
+async function adminFiles(){await adminLoadBase();adminState.files=await adminFetch('session_files','*','created_at',false);const sessionOptions=adminState.sessions.map(s=>`<option value="${s.id}">${s.event_id} · ${s.nombre} · ${new Date(s.fecha_hora).toLocaleString('es-ES')}</option>`).join('');$('adminPanelBody').innerHTML=`<div class="admin-two"><div class="admin-box"><h3>📦 Añadir / editar archivo programado</h3><input type="hidden" id="admFileEditing"><div class="form-grid"><div class="field full"><label>Sesión</label><select id="admFileSession">${sessionOptions}</select></div><div class="field"><label>Título</label><input id="admFileTitle" placeholder="Pack Skins"></div><div class="field"><label>Texto botón</label><input id="admFileButton" value="Descargar"></div><div class="field full"><label>Descripción</label><input id="admFileDesc" placeholder="Archivo correspondiente a esta sesión"></div><div class="field full"><label>URL</label><input id="admFileUrl" placeholder="https://drive.google.com/..."></div><div class="field"><label>Visible desde</label><input id="admFileFrom" type="datetime-local"></div><div class="field"><label>Visible hasta</label><input id="admFileUntil" type="datetime-local"></div></div><div class="form-actions"><button class="ghost-btn" onclick="adminClearFileForm()">Nuevo</button><button class="submit-btn" onclick="adminSaveFile()">Guardar archivo</button></div></div><div class="admin-box"><h3>Archivos programados</h3><div class="admin-list">${adminState.files.map(f=>{const s=adminState.sessions.find(x=>x.id===f.session_id)||{};return `<div class="admin-list-item"><span><b>${f.titulo}</b><br><small>${s.event_id||''} · ${s.nombre||f.session_id}<br>Desde: ${f.visible_from?new Date(f.visible_from).toLocaleString('es-ES'):'—'} · Hasta: ${f.visible_until?new Date(f.visible_until).toLocaleString('es-ES'):'—'}</small></span><span><button class="ghost-btn" onclick="adminEditFile('${f.id}')">Editar</button> <button class="ghost-btn" onclick="adminDeleteFile('${f.id}')">Borrar</button></span></div>`}).join('')||'<div class="admin-list-item"><span>No hay archivos.</span></div>'}</div></div></div>`}
+function adminEditFile(id){const f=adminState.files.find(x=>x.id===id);if(!f)return toast('No encuentro este archivo.');$('admFileEditing').value=f.id;$('admFileSession').value=f.session_id||'';$('admFileTitle').value=f.titulo||'';$('admFileButton').value=f.boton||'Descargar';$('admFileDesc').value=f.descripcion||'';$('admFileUrl').value=f.url||'';$('admFileFrom').value=isoToDateLocal(f.visible_from);$('admFileUntil').value=isoToDateLocal(f.visible_until);toast('Editando archivo. Guarda para aplicar cambios.')}
+function adminClearFileForm(){['admFileEditing','admFileTitle','admFileDesc','admFileUrl','admFileFrom','admFileUntil'].forEach(id=>{if($(id))$(id).value=''});if($('admFileButton'))$('admFileButton').value='Descargar'}
+async function adminSaveFile(){const editing=val('admFileEditing');const payload={session_id:val('admFileSession'),titulo:val('admFileTitle'),descripcion:val('admFileDesc'),boton:val('admFileButton')||'Descargar',url:val('admFileUrl'),visible_from:dateLocalToIso(val('admFileFrom')),visible_until:dateLocalToIso(val('admFileUntil'))};if(!payload.session_id||!payload.titulo||!payload.url)return toast('Sesión, título y URL son obligatorios.');const res=editing?await supabaseClient.from('session_files').update(payload).eq('id',editing):await supabaseClient.from('session_files').insert(payload);if(res.error)return toast(res.error.message);toast(editing?'Archivo actualizado.':'Archivo programado.');await adminFiles()}
 async function adminDeleteFile(id){if(!confirm('¿Borrar archivo?'))return;const {error}=await supabaseClient.from('session_files').delete().eq('id',id);if(error)return toast(error.message);await adminFiles()}
 
 
@@ -2308,3 +2318,4 @@ init();
 </script>
 </body>
 </html>
+
