@@ -1433,7 +1433,7 @@ async function adminSetRegistrationApproval(id,status){
   const label=status==="approved"?"aceptada":"pendiente";
   const {error}=await supabaseClient.from('registrations').update({approval_status:status}).eq('id',id);
   if(error)return toast(error.message);
-  toast('Inscripciï¿½n '+label+'.');
+  toast('Inscripcion '+label+'.');
   await loadMyRegistrations();
   await loadPublicEvents();
   await adminRegistrations();
@@ -1482,6 +1482,25 @@ async function adminRegistrations(){
     const editCategories=adminAllowedCategoriesForEvent(editEventId);
     const selectedCategory=editing?.categoria || editCategories[0]?.nombre || '';
     const editCars=adminAllowedCarsForEventCategory(editEventId,selectedCategory);
+    const manualSessions=adminState.sessions.filter(s=>s.event_id===selected);
+    const manualCategories=adminAllowedCategoriesForEvent(selected);
+    const manualCategory=manualCategories[0]?.nombre || '';
+    const manualCars=adminAllowedCarsForEventCategory(selected,manualCategory);
+    const pilotOptions=adminState.profiles.map(p=>`<option value="${p.id}">${`${p.nombre||''} ${p.apellido||''}`.trim()||p.email||p.id}${p.licencia_piloto?` · ${p.licencia_piloto}`:''}</option>`).join('');
+    const manualForm=`
+      <div class="admin-box" style="margin-bottom:20px">
+        <h3>Nueva inscripcion manual</h3>
+        <p class="empty">Crea una inscripcion para el evento seleccionado aunque el periodo publico este cerrado.</p>
+        <div class="form-grid">
+          <div class="field full"><label>Piloto</label><select id="admManualRegPilot">${pilotOptions||'<option value="">No hay pilotos disponibles</option>'}</select></div>
+          <div class="field"><label>Categoria</label><select id="admManualRegCategory" onchange="adminRefreshManualRegistrationCars()">${manualCategories.map(c=>`<option value="${c.nombre}">${c.nombre}</option>`).join('')||'<option value="">Sin categorias</option>'}</select></div>
+          <div class="field"><label>Coche</label><select id="admManualRegCar">${manualCars.map(c=>`<option value="${c.nombre}">${c.nombre}</option>`).join('')||'<option value="">No hay coches para esta categoria</option>'}</select></div>
+          <div class="field"><label>Sesion</label><select id="admManualRegSession">${manualSessions.map(s=>`<option value="${s.id}">${s.nombre||s.id} · ${s.fecha_hora?new Date(s.fecha_hora).toLocaleString('es-ES'):'sin fecha'}</option>`).join('')||'<option value="">Sin sesiones</option>'}</select></div>
+          <div class="field"><label>Copiloto</label><input id="admManualRegCodriver" placeholder="Nombre copiloto"></div>
+          <div class="field"><label>Nacionalidad copiloto</label><input id="admManualRegCoNat" placeholder="España"></div>
+        </div>
+        <div class="form-actions"><button class="submit-btn" onclick="adminCreateManualRegistration()">Crear inscripcion manual</button></div>
+      </div>`;
 
     const editForm=editing?`
       <div class="admin-box" style="margin-bottom:20px">
@@ -1524,7 +1543,7 @@ async function adminRegistrations(){
 
     const selectedEvent=adminState.events.find(e=>e.id===selected)||{};
     const tableMarkup=`<div class="admin-table-wrap"><table><thead><tr><th>Piloto</th><th>Equipo</th><th>Copiloto</th><th>Categoría</th><th>Coche</th><th>Sesion</th><th>Resultado</th><th>Historial</th><th>Aprobación</th><th>Fecha</th><th>Acciones</th></tr></thead><tbody>${rows||'<tr><td colspan="11">No hay inscripciones para este evento.</td></tr>'}</tbody></table></div>`;
-    $('adminPanelBody').innerHTML=`${editForm}<div class="admin-box"><h3>👥 Inscripciones por evento</h3><p class="empty">Selecciona un evento y abre la tabla a pantalla completa para ver, editar o aprobar inscritos.</p><div class="form-grid"><div class="field full"><label>Evento</label><select id="admRegEventFilter" onchange="adminSetRegistrationEvent(this.value)">${eventOptions}</select></div></div><button class="submit-btn registration-table-open" onclick="openRegistrationTableModal()">Abrir tabla de inscripciones</button></div>`;
+    $('adminPanelBody').innerHTML=`${manualForm}${editForm}<div class="admin-box"><h3>👥 Inscripciones por evento</h3><p class="empty">Selecciona un evento y abre la tabla a pantalla completa para ver, editar o aprobar inscritos.</p><div class="form-grid"><div class="field full"><label>Evento</label><select id="admRegEventFilter" onchange="adminSetRegistrationEvent(this.value)">${eventOptions}</select></div></div><button class="submit-btn registration-table-open" onclick="openRegistrationTableModal()">Abrir tabla de inscripciones</button></div>`;
     if($('registrationTableModalBody'))$('registrationTableModalBody').innerHTML=tableMarkup;
     if($('registrationTableModalSubtitle'))$('registrationTableModalSubtitle').textContent=selectedEvent.nombre||selected||'Evento seleccionado';
   }catch(error){
@@ -1558,7 +1577,37 @@ function adminRefreshRegistrationCars(){
 function adminToggleDesafioPeugeotField(){
   const field=$('admEditRegDesafioField');
   if(field)field.classList.toggle('hidden',!isPeugeot208(val('admEditRegCar')));
-}function registrationResultStatus(value){
+}
+function adminRefreshManualRegistrationCars(){
+  const carSelect=$('admManualRegCar');
+  if(!carSelect)return;
+  const cars=adminAllowedCarsForEventCategory(adminSelectedRegistrationEventId,val('admManualRegCategory'));
+  carSelect.innerHTML=cars.map(c=>`<option value="${c.nombre}">${c.nombre}</option>`).join('')||'<option value="">No hay coches para esta categoria</option>';
+}
+async function adminCreateManualRegistration(){
+  if(!adminGuard())return;
+  const eventId=adminSelectedRegistrationEventId;
+  const payload={
+    event_id:eventId,
+    pilot_id:val('admManualRegPilot'),
+    categoria:val('admManualRegCategory'),
+    coche:val('admManualRegCar'),
+    session_id:val('admManualRegSession'),
+    copiloto:val('admManualRegCodriver'),
+    nacionalidad_copiloto:val('admManualRegCoNat'),
+    approval_status:'approved'
+  };
+  if(!payload.event_id||!payload.pilot_id||!payload.categoria||!payload.coche||!payload.session_id)return toast('Rellena piloto, categoria, coche y sesion.');
+  if(adminState.registrations.some(r=>r.event_id===payload.event_id&&r.pilot_id===payload.pilot_id))return toast('Este piloto ya esta inscrito en este evento.');
+  const {error}=await supabaseClient.from('registrations').insert(payload);
+  if(error)return toast(error.message);
+  toast('Inscripcion manual creada.');
+  adminBaseLoadedAt=0;
+  await loadPublicEvents();
+  await loadMyRegistrations();
+  await adminRegistrations();
+}
+function registrationResultStatus(value){
   const upper=String(value||'').trim().toUpperCase();
   return upper==='NP'||upper==='AB'?upper:'pos';
 }
@@ -2330,4 +2379,3 @@ init();
 </script>
 </body>
 </html>
-
