@@ -2187,6 +2187,7 @@ async function showPilotModal(name, avatar='', pilotId=''){
       if(!se?.fecha_hora)return false;
       return new Date(se.fecha_hora).getTime() < Date.now();
     }).forEach(r=>{
+      if(!isParticipationResult(r.posicion_general||r.clasificacion_general||r.resultado_general||r.pos_general)&&!isParticipationResult(r.posicion_categoria||r.clasificacion_categoria||r.resultado_categoria||r.pos_categoria)&&!isParticipationResult(r.posicion_desafio_peugeot))return;
       const ev=events.find(e=>e.id===r.event_id)||{};
       const se=sessions.find(x=>x.id===r.session_id)||{};
       const item=ensureHistory(ev.nombre||r.event_id||'Evento',se.fecha_hora?new Date(se.fecha_hora).getTime():0,displayHistoryCategory(r.categoria)+' - '+(r.coche||'-'));
