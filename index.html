@@ -786,6 +786,8 @@ function getSpainWallTime(value){if(!value)return null;const date=new Date(value
 function registrationHasOpened(event){const open=getSpainWallTime(event?.registrationOpenRaw);return !open||getSpainTime()>=open}
 function registrationHasClosed(event){const close=getSpainWallTime(event?.registrationCloseRaw);return !!close&&getSpainTime()>=close}
 function isRegistrationOpen(event){return registrationHasOpened(event)&&!registrationHasClosed(event)}
+function sessionIsFull(session){return Number(session?.taken||0)>=Number(session?.max||0)}
+function sessionIsOpen(session){return !!session && session.state==="Open" && !sessionIsFull(session)}
 function isFileVisible(file){const now=getSpainTime();if(file.visibleFrom&&now<new Date(file.visibleFrom))return false;if(file.visibleUntil&&now>new Date(file.visibleUntil))return false;return true}
 function getCountdownText(file){const now=getSpainTime();if(!file.visibleFrom||now>=new Date(file.visibleFrom))return "";const totalSeconds=Math.max(0,Math.ceil((new Date(file.visibleFrom)-now)/1000));const d=Math.floor(totalSeconds/86400),h=Math.floor((totalSeconds%86400)/3600),m=Math.floor((totalSeconds%3600)/60),s=totalSeconds%60;if(d>0)return `Disponible en ${d}d ${h}h`;if(h>0)return `Disponible en ${h}h ${m}m`;if(m>0)return `Disponible en ${m}m ${s}s`;return `Disponible en ${s}s`}
 
@@ -816,7 +818,9 @@ async function loadPublicEvents(){
   events = dbEvents.map(ev=>{
     const evSessions=sessions.filter(s=>s.event_id===ev.id).map(s=>{
       const taken=registrations.filter(r=>r.session_id===s.id).length;
-      return {id:s.id,name:s.nombre,date:fmtDate(s.fecha_hora),time:fmtTime(s.fecha_hora),raw:s.fecha_hora,taken,max:s.cupo_maximo||30,state:(s.estado||"open").toLowerCase()==="open"?"Open":"Closed"};
+      const max=Number(s.cupo_maximo)||30;
+      const manuallyOpen=(s.estado||"open").toLowerCase()==="open";
+      return {id:s.id,name:s.nombre,date:fmtDate(s.fecha_hora),time:fmtTime(s.fecha_hora),raw:s.fecha_hora,taken,max,state:manuallyOpen&&taken<max?"Open":"Closed"};
     });
 
     const championship=championships.find(c=>c.id===ev.championship_id);
@@ -974,7 +978,7 @@ function startSessionChange(id){
   setNationalityValue("coNationality","coNationalityOther","coCcaaWrap","coNationalityOtherWrap",entry.coNationality||"");$("coCcaa").value=entry.coCcaa||"";$("coNationality").disabled=true;$("coCcaa").disabled=true;if($("coNationalityOther"))$("coNationalityOther").disabled=true;
   $("categorySelect").innerHTML=`<option>${entry.category}</option>`;$("categorySelect").disabled=true;
   $("carSelect").innerHTML=`<option>${entry.car}</option>`;$("carSelect").disabled=true;
-  $("sessionSelect").innerHTML=e.sessions.map(s=>`<option value="${s.id}" ${s.id===entry.sessionId?"selected":""}>${s.name} · ${s.date} · ${s.time} · ${s.taken}/${s.max}</option>`).join("");
+  $("sessionSelect").innerHTML=e.sessions.map(s=>`<option value="${s.id}" ${s.id===entry.sessionId?"selected":""} ${s.id!==entry.sessionId&&!sessionIsOpen(s)?"disabled":""}>${s.name} · ${s.date} · ${s.time} · ${s.taken}/${s.max}${sessionIsOpen(s)||s.id===entry.sessionId?"":" · Cerrada"}</option>`).join("");
   $("sessionSelect").disabled=false;
   toggleEntryCodriverFields(e);
   showPage("entry");
@@ -1026,7 +1030,9 @@ function startEntry(id){
   $("categorySelect").innerHTML=e.categories.map(c=>`<option value="${c.id}">${c.name}</option>`).join("");
   $("categorySelect").onchange=updateEntryCars;
   updateEntryCars();
-  $("sessionSelect").innerHTML=e.sessions.map(s=>`<option value="${s.id}">${s.name} · ${s.date} · ${s.time} · ${s.taken}/${s.max}</option>`).join("");
+  const availableSessions=e.sessions.filter(sessionIsOpen);
+  if(!availableSessions.length)return toast("No hay sesiones con plazas disponibles para esta prueba.");
+  $("sessionSelect").innerHTML=availableSessions.map(s=>`<option value="${s.id}">${s.name} · ${s.date} · ${s.time} · ${s.taken}/${s.max}</option>`).join("");
   toggleEntryCodriverFields(e);
   showPage("entry")
 }
@@ -1172,6 +1178,8 @@ async function confirmEntry(){
     if(!canChangeSession(e,existing))return toast("Ya no puedes cambiar de sesión o ya has usado el cambio disponible.");
     const newSessionId=$("sessionSelect").value;
     if(newSessionId===existing.sessionId)return toast("Elige una sesión distinta.");
+    const targetSession=e.sessions.find(s=>s.id===newSessionId);
+    if(!sessionIsOpen(targetSession))return toast("Esta sesion ya no tiene plazas disponibles.");
     const {error}=await supabaseClient.rpc("change_registration_session",{p_registration_id:existing.id,p_new_session_id:newSessionId});
     if(error)return toast(error.message);
     await recordRegistrationChange({registrationId:existing.id,eventId:currentEventId,pilotId:currentUser.id,changeType:"session",oldSessionId:existing.sessionId,newSessionId});
@@ -1199,6 +1207,8 @@ async function confirmEntry(){
   const categoryOption=$("categorySelect").selectedOptions[0];
   const needsCodriver=eventNeedsCodriver(e);
   const coNationalityValue=needsCodriver?nationalityValue("coNationality","coNationalityOther"):"";
+  const selectedSession=e.sessions.find(s=>s.id===$("sessionSelect").value);
+  if(!sessionIsOpen(selectedSession))return toast("Esta sesion ya no tiene plazas disponibles.");
   const entry={coDriver:needsCodriver?$("coDriver").value.trim():"",coNationality:coNationalityValue,coCcaa:needsCodriver&&$("coNationality").value==="España"?$("coCcaa").value:"",category:categoryOption?categoryOption.textContent:$("categorySelect").value,car:$("carSelect").value,sessionId:$("sessionSelect").value,createdAt:new Date().toISOString(),sessionChangeCount:0,vehicleChangeCount:0};
   if(needsCodriver&&!entry.coDriver||needsCodriver&&!entry.coNationality)return toast("Rellena copiloto y nacionalidad del copiloto.");if(needsCodriver&&entry.coNationality==="España"&&!entry.coCcaa)return toast("Selecciona la comunidad autónoma del copiloto.");
   const {error}=await supabaseClient.from("registrations").insert({event_id:currentEventId,pilot_id:currentUser.id,copiloto:entry.coDriver,nacionalidad_copiloto:entry.coNationality,copiloto_comunidad_autonoma:entry.coCcaa,categoria:entry.category,coche:entry.car,session_id:entry.sessionId});
