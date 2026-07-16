@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 
 <html lang="es">
 <head>
@@ -506,6 +506,16 @@ textarea{width:100%;min-height:110px;border:1px solid var(--border);border-radiu
     <button class="ghost-btn" onclick="closeRegistrationTableModal()">Cerrar</button>
   </div>
   <div class="registration-table-modal-body" id="registrationTableModalBody"></div>
+</div>
+<div class="registration-table-modal" id="downloadLogModal">
+  <div class="registration-table-modal-head">
+    <div>
+      <div class="registration-table-modal-title">Registro de descargas</div>
+      <div class="registration-table-modal-subtitle" id="downloadLogModalSubtitle"></div>
+    </div>
+    <button class="ghost-btn" onclick="closeDownloadLogModal()">Cerrar</button>
+  </div>
+  <div class="registration-table-modal-body" id="downloadLogModalBody"></div>
 </div><div class="history-modal" id="registrationHistoryModal" onclick="closeRegistrationHistoryModal(event)">
   <div class="history-modal-content" onclick="event.stopPropagation()">
     <div class="history-modal-head">
@@ -868,7 +878,7 @@ async function loadPublicEvents(){
     files.forEach(f=>{
       if(!evSessions.some(s=>s.id===f.session_id))return;
       if(!sessionFiles[f.session_id])sessionFiles[f.session_id]=[];
-      sessionFiles[f.session_id].push({title:f.titulo,description:f.descripcion||"Archivo de la sesión.",button:f.boton||"Descargar",url:f.url,visibleFrom:f.visible_from,visibleUntil:f.visible_until});
+      sessionFiles[f.session_id].push({id:f.id,title:f.titulo,description:f.descripcion||"Archivo de la sesión.",button:f.boton||"Descargar",url:f.url,visibleFrom:f.visible_from,visibleUntil:f.visible_until});
     });
 
     const eventCategories=categories
@@ -915,7 +925,19 @@ function clearLocalEntry(eventId){
 }
 function clearAllLocalEntries(){localStorage.removeItem("acc_entries")}
 function saveEntry(eventId,entry){clearLocalEntry(eventId)}
-function renderSessionFiles(event){const entry=getEntry(event.id);if(!entry)return `<div class="notice">Los archivos estarán disponibles cuando te inscribas en una sesión de la prueba</div>`;if(entry.approvalStatus!=="approved")return `<div class="notice">Tu inscripción está pendiente de aprobación. Los archivos estarán disponibles cuando la administración acepte tu inscripción.</div>`;const session=event.sessions.find(s=>s.id===entry.sessionId);const files=event.sessionFiles[entry.sessionId]||[];if(!files.length)return `<div class="notice">Estás inscrito en esta sesión, pero todavía no hay archivos publicados para ella.</div>`;return `<div class="session-file-group"><div class="session-file-title">${session?`${session.name} · ${session.date} · ${session.time}`:"Tu sesión"}</div>${files.map((file,i)=>{const visible=isFileVisible(file),count=getCountdownText(file);return `<div class="file-row"><div class="round-number">${i+1}</div><div class="file-info"><strong>${file.title}</strong><span>${file.description}${count?`<span class="countdown">${count}</span>`:""}</span></div><div class="file-type">Archivo</div>${visible?`<a class="file-btn" href="${file.url}" target="_blank" rel="noopener noreferrer">${file.button}</a>`:`<span class="file-btn disabled">Próximamente</span>`}</div>`}).join("")}</div>`}
+async function recordFileDownloadById(eventId,sessionId,fileKey){
+  try{
+    if(!currentUser)return;
+    const event=events.find(e=>String(e.id)===String(eventId));
+    const session=event?.sessions.find(s=>String(s.id)===String(sessionId));
+    const file=(event?.sessionFiles?.[sessionId]||[]).find(f=>String(f.id||f.url)===String(fileKey));
+    if(!event||!session||!file)return;
+    const payload={file_id:String(file.id||''),event_id:String(event.id||''),event_name:event.name||'',session_id:String(session.id||''),session_name:session.name||'',pilot_id:currentUser.id||'',pilot_name:`${currentUser.name||''} ${currentUser.lastName||''}`.trim()||currentUser.email||'',file_title:file.title||'',file_url:file.url||''};
+    const {error}=await supabaseClient.from('file_download_logs').insert(payload);
+    if(error)console.warn('No se pudo registrar la descarga:',error.message);
+  }catch(e){console.warn('No se pudo registrar la descarga:',e)}
+}
+function renderSessionFiles(event){const entry=getEntry(event.id);if(!entry)return `<div class="notice">Los archivos estarán disponibles cuando te inscribas en una sesión de la prueba</div>`;if(entry.approvalStatus!=="approved")return `<div class="notice">Tu inscripción está pendiente de aprobación. Los archivos estarán disponibles cuando la administración acepte tu inscripción.</div>`;const session=event.sessions.find(s=>s.id===entry.sessionId);const files=event.sessionFiles[entry.sessionId]||[];if(!files.length)return `<div class="notice">Estás inscrito en esta sesión, pero todavía no hay archivos publicados para ella.</div>`;return `<div class="session-file-group"><div class="session-file-title">${session?`${session.name} · ${session.date} · ${session.time}`:"Tu sesión"}</div>${files.map((file,i)=>{const visible=isFileVisible(file),count=getCountdownText(file),fileKey=escapeAttr(String(file.id||file.url||i));return `<div class="file-row"><div class="round-number">${i+1}</div><div class="file-info"><strong>${escapeAttr(file.title)}</strong><span>${escapeAttr(file.description)}${count?`<span class="countdown">${escapeAttr(count)}</span>`:""}</span></div><div class="file-type">Archivo</div>${visible?`<a class="file-btn" href="${escapeAttr(file.url)}" target="_blank" rel="noopener noreferrer" onclick="recordFileDownloadById('${escapeAttr(event.id)}','${escapeAttr(entry.sessionId)}','${fileKey}')">${escapeAttr(file.button)}</a>`:`<span class="file-btn disabled">Próximamente</span>`}</div>`}).join("")}</div>`}
 function openEvent(id){currentEventId=id;const e=events.find(x=>x.id===id);if(!e){toast("Evento no encontrado o todavía no está cargado.");showPage("home");return}const entry=getEntry(id);$("eventContent").innerHTML=`<div class="layout"><div class="stack"><section class="panel"><div class="panel-head"><div class="panel-title">📄 Documentos oficiales</div><div class="panel-kicker">Assetto Corsa Community</div></div><div class="panel-body"><div class="notice">Tablón de anuncios oficial de la prueba.<br><br><a class="pill-btn primary" href="${e.officialBoardUrl}" target="_blank" rel="noopener noreferrer">Abrir tablón de anuncios</a></div></div></section><section class="panel"><div class="panel-head"><div class="panel-title">🚦 Sesiones</div></div><div class="panel-body"><div class="notice">Los horarios de las sesiones están adaptados a la zona horaria local de cada participante.</div><table><thead><tr><th>#</th><th>Fecha y hora</th><th>Plazas</th><th>Estado</th><th>Inscripción</th></tr></thead><tbody>${e.sessions.map((s,i)=>`<tr><td>${i+1}</td><td><strong>${s.date}</strong><br><span style="color:var(--blue);font-weight:900">${s.time}</span></td><td>${s.taken}/${s.max}</td><td><span class="badge ${s.state==="Open"?"open":"closed"}">${s.state}</span></td><td><span class="badge ${entry&&entry.sessionId===s.id?"open":"closed"}">${entry&&entry.sessionId===s.id?"Inscrito":"No inscrito"}</span></td></tr>`).join("")}</tbody></table></div></section><section class="panel"><div class="panel-head"><div class="panel-title">📦 Archivos de la prueba</div></div><div class="panel-body" id="sessionFilesBox">${renderSessionFiles(e)}</div></section></div><aside class="panel summary"><div class="panel-head"><div class="panel-title">Información de la prueba</div></div><div class="panel-body"><div class="summary-row"><span class="label">Comienzo periodo de inscripciones</span><span class="value">${e.registrationOpen}</span></div><div class="summary-row"><span class="label">Fin periodo de inscripciones</span><span class="value">${e.registrationClose}</span></div><div class="summary-row"><span class="label">Pilotos inscritos provisionales</span><span class="value">${e.drivers}</span></div><div class="summary-row"><span class="label">Kilometraje total total</span><span class="value">${e.distance}</span></div><div class="summary-row"><span class="label">Campeonato</span><span class="value">${e.championship||"—"}</span></div>${e.posterUrl?`<div class="event-poster-summary"><div class="label">Cartel de la prueba</div><img class="event-poster" src="${e.posterUrl}" alt="Cartel ${e.name}" loading="lazy"></div>`:""}${entry?`
 <div class="notice"><b>Ya estás inscrito.</b><br>Sesión: ${e.sessions.find(s=>s.id===entry.sessionId)?.name||"—"}<br>Categoría: ${entry.category}<br>Coche: ${entry.car}</div>
 <button class="wide-btn ${canChangeSession(e,entry)?'primary':''}" ${canChangeSession(e,entry)?`onclick="startSessionChange('${e.id}')"`:"disabled"}>Cambiar sesión ${entry.sessionChangeCount||0}/1</button>
@@ -1222,6 +1244,8 @@ let adminEditingRegistrationId = null;
 let adminEditingClassificationId = null;
 let adminSelectedClassificationChampionshipId = '';
 let adminSelectedClassificationEventName = '';
+let adminSelectedDownloadEventId = '';
+let adminDownloadLogSort = 'date';
 function adminGuard(){if(!currentUser){toast("Inicia sesión con tu cuenta admin.");showPage("login");return false}if(currentUser.role!=="admin"){toast("Acceso denegado. Esta cuenta no es administradora.");showPage("home");return false}return true}
 function openAdmin(){if(!adminGuard())return;renderAdmin();showPage("admin");adminTab("events")}
 function renderAdmin(){
@@ -1240,7 +1264,7 @@ function renderAdmin(){
           <button class="admin-tab" data-admin-tab="registrations" onclick="adminTab('registrations')">Inscripciones</button><button class="admin-tab" data-admin-tab="classifications" onclick="adminTab('classifications')">Clasificaciones</button>
           <button class="admin-tab" data-admin-tab="cars" onclick="adminTab('cars')">Coches</button>
           <button class="admin-tab" data-admin-tab="categories" onclick="adminTab('categories')">Categorías</button>
-          <button class="admin-tab" data-admin-tab="files" onclick="adminTab('files')">Archivos</button>
+          <button class="admin-tab" data-admin-tab="files" onclick="adminTab('files')">Archivos</button><button class="admin-tab" data-admin-tab="downloads" onclick="adminTab('downloads')">Registro de descargas</button>
           <button class="admin-tab" data-admin-tab="teams" onclick="adminTab('teams')">Equipos</button>
           <button class="admin-tab" data-admin-tab="licenses" onclick="adminTab('licenses')">Licencias</button>
         </div>
@@ -1249,7 +1273,7 @@ function renderAdmin(){
     </div>`;
 }
 function adminSetActive(tab){document.querySelectorAll('[data-admin-tab]').forEach(b=>b.classList.toggle('active',b.dataset.adminTab===tab))}
-async function adminTab(tab){if(!adminGuard())return;adminSetActive(tab);if(tab==='events')return adminEvents();if(tab==='championships')return adminChampionships();if(tab==='sessions')return adminSessions();if(tab==='registrations')return adminRegistrations();if(tab==='classifications')return adminClassifications();if(tab==='cars')return adminCars();if(tab==='categories')return adminCategories();if(tab==='files')return adminFiles();if(tab==='teams')return adminTeams();if(tab==='licenses')return adminLicenseRequests()}
+async function adminTab(tab){if(!adminGuard())return;adminSetActive(tab);if(tab==='events')return adminEvents();if(tab==='championships')return adminChampionships();if(tab==='sessions')return adminSessions();if(tab==='registrations')return adminRegistrations();if(tab==='classifications')return adminClassifications();if(tab==='cars')return adminCars();if(tab==='categories')return adminCategories();if(tab==='files')return adminFiles();if(tab==='downloads')return adminDownloadLogs();if(tab==='teams')return adminTeams();if(tab==='licenses')return adminLicenseRequests()}
 async function withTimeout(promise, ms=9000, label='consulta'){
   let timer;
   const timeout = new Promise((_, reject) => {
@@ -1516,7 +1540,7 @@ async function adminRegistrations(){
 
     const editForm=editing?`
       <div class="admin-box" style="margin-bottom:20px">
-        <h3>✏️ Editar inscripción</h3>
+        <h3>✏ï¸ Editar inscripción</h3>
         <p class="empty">Como admin puedes corregir una inscripción manualmente o mover al piloto de sesión.</p>
         <input type="hidden" id="admEditRegId" value="${editing.id}">
         <div class="form-grid">
@@ -1811,6 +1835,31 @@ function adminEditFile(id){const f=adminState.files.find(x=>x.id===id);if(!f)ret
 function adminClearFileForm(){['admFileEditing','admFileTitle','admFileDesc','admFileUrl','admFileFrom','admFileUntil'].forEach(id=>{if($(id))$(id).value=''});if($('admFileButton'))$('admFileButton').value='Descargar'}
 async function adminSaveFile(){const editing=val('admFileEditing');const payload={session_id:val('admFileSession'),titulo:val('admFileTitle'),descripcion:val('admFileDesc'),boton:val('admFileButton')||'Descargar',url:val('admFileUrl'),visible_from:dateLocalToIso(val('admFileFrom')),visible_until:dateLocalToIso(val('admFileUntil'))};if(!payload.session_id||!payload.titulo||!payload.url)return toast('Sesión, título y URL son obligatorios.');const res=editing?await supabaseClient.from('session_files').update(payload).eq('id',editing):await supabaseClient.from('session_files').insert(payload);if(res.error)return toast(res.error.message);toast(editing?'Archivo actualizado.':'Archivo programado.');await adminFiles()}
 async function adminDeleteFile(id){if(!confirm('¿Borrar archivo?'))return;const {error}=await supabaseClient.from('session_files').delete().eq('id',id);if(error)return toast(error.message);await adminFiles()}
+async function adminDownloadLogs(selectedEventId='',sortMode=''){
+  if(!adminGuard())return;
+  await adminLoadBase();
+  if(selectedEventId)adminSelectedDownloadEventId=selectedEventId;
+  if(sortMode)adminDownloadLogSort=sortMode;
+  const current=adminSelectedDownloadEventId||adminState.events[0]?.id||'';
+  adminSelectedDownloadEventId=current;
+  const eventOptions=adminState.events.map(e=>`<option value="${escapeAttr(e.id)}" ${String(e.id)===String(current)?'selected':''}>${escapeAttr(e.nombre||e.id)}</option>`).join('');
+  const selectedEvent=adminState.events.find(e=>String(e.id)===String(current))||{};
+  $('adminPanelBody').innerHTML=`<div class="admin-box"><h3>Registro de descargas</h3><p class="empty">Selecciona una prueba y abre la tabla en ventana.</p><div class="form-grid"><div class="field"><label>Prueba</label><select id="admDownloadEvent" onchange="adminDownloadLogs(this.value)">${eventOptions}</select></div><div class="field"><label>Ordenar por</label><select id="admDownloadSort" onchange="adminDownloadLogs('',this.value)"><option value="date" ${adminDownloadLogSort==='date'?'selected':''}>Fecha y hora</option><option value="session" ${adminDownloadLogSort==='session'?'selected':''}>Sesión</option></select></div></div><button class="submit-btn registration-table-open" onclick="openDownloadLogModal()">Abrir registro de descargas</button></div>`;
+  await loadDownloadLogModal(current,adminDownloadLogSort,selectedEvent.nombre||current);
+}
+async function loadDownloadLogModal(eventId,sortMode='date',eventName=''){
+  const body=$('downloadLogModalBody');
+  if(body)body.innerHTML='<p class="empty">Cargando registro...</p>';
+  const {data,error}=await supabaseClient.from('file_download_logs').select('*').eq('event_id',eventId).order('downloaded_at',{ascending:false}).limit(500);
+  if(error){if(body)body.innerHTML=`<p class="empty">No se pudo cargar el registro: ${escapeAttr(error.message)}</p>`;return}
+  let logs=data||[];
+  if(sortMode==='session')logs=logs.sort((a,b)=>String(a.session_name||a.session_id||'').localeCompare(String(b.session_name||b.session_id||''),'es')||(new Date(b.downloaded_at||0)-new Date(a.downloaded_at||0)));
+  const rows=logs.map(log=>`<tr><td>${escapeAttr(log.pilot_name||'-')}</td><td>${escapeAttr(log.session_name||log.session_id||'-')}</td><td>${escapeAttr(log.file_title||'-')}</td><td>${log.downloaded_at?new Date(log.downloaded_at).toLocaleString('es-ES'):'-'}</td></tr>`).join('');
+  if($('downloadLogModalSubtitle'))$('downloadLogModalSubtitle').textContent=(eventName||eventId)+' · Orden: '+(sortMode==='session'?'Sesión':'Fecha y hora');
+  if(body)body.innerHTML=`<div class="admin-table-wrap"><table><thead><tr><th>Piloto</th><th>Sesión</th><th>Archivo</th><th>Fecha y hora</th></tr></thead><tbody>${rows||'<tr><td colspan="4">No hay descargas registradas para esta prueba.</td></tr>'}</tbody></table></div>`;
+}
+function openDownloadLogModal(){const modal=$('downloadLogModal');if(!modal)return;modal.classList.add('visible');document.body.style.overflow='hidden'}
+function closeDownloadLogModal(){const modal=$('downloadLogModal');if(!modal)return;modal.classList.remove('visible');document.body.style.overflow=''}
 
 
 // ===== Equipos integrados =====
@@ -2392,3 +2441,5 @@ init();
 </script>
 </body>
 </html>
+
+
