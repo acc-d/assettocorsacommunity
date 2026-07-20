@@ -109,6 +109,7 @@ function driverName(profile,registration){
   const name=`${profile?.nombre||""} ${profile?.apellido||""}`.trim();
   return name||registration.pilot_id||"Piloto";
 }
+function championshipHasPublicStandings(championship){return championship?.mostrar_clasificaciones!==false}
 async function openStandings(){
   showPage('standings');
   await loadStandingsData();
@@ -126,8 +127,9 @@ async function loadStandingsData(){
     safeSelect('classification_results','*','created_at',true),
     safeSelect('team_classification_results','*','created_at',true)
   ]);
-  standingsState={...standingsState,championships,events:eventsData,registrations,profiles,categories,championshipCategories,classificationResults,teamClassificationResults};
-  if(!standingsState.selectedChampionshipId||!championships.some(c=>c.id===standingsState.selectedChampionshipId))standingsState.selectedChampionshipId=championships[0]?.id||"";
+  const publicChampionships=championships.filter(championshipHasPublicStandings);
+  standingsState={...standingsState,championships:publicChampionships,events:eventsData,registrations,profiles,categories,championshipCategories,classificationResults,teamClassificationResults};
+  if(!standingsState.selectedChampionshipId||!publicChampionships.some(c=>c.id===standingsState.selectedChampionshipId))standingsState.selectedChampionshipId=publicChampionships[0]?.id||"";
 }
 function standingsCategories(championshipId){
   const ids=standingsState.championshipCategories.filter(x=>x.championship_id===championshipId).map(x=>x.category_id);
@@ -249,6 +251,7 @@ function renderStandingTable(championshipId,view){
 function setStandingsChampionship(value){standingsState.selectedChampionshipId=value;standingsState.selectedView='general';renderStandings()}
 function setStandingsView(value){standingsState.selectedView=value;renderStandings()}
 function renderStandings(){
+  if(!standingsState.championships.length){$('standingsContent').innerHTML=`<div class="panel"><div class="panel-head"><div><p class="eyebrow">Campeonatos</p><div class="panel-title">Clasificaciones</div></div><div class="panel-kicker">Assetto Corsa Community</div></div><div class="panel-body"><p class="empty">No hay campeonatos con clasificaciones visibles en la web.</p></div></div>`;return}
   const champId=standingsState.selectedChampionshipId;
   const championship=standingsState.championships.find(c=>c.id===champId)||{};
   const categories=standingsCategories(champId);
@@ -349,7 +352,7 @@ async function loadPublicEvents(){
     });
 
     const eventCategories=categories
-      .filter(c=>allowedCategoryIds.includes(c.id))
+      .filter(c=>allowedCategoryIds.includes(c.id) && c.visible_para_pilotos!==false)
       .map(c=>({id:c.id,name:c.nombre}));
 
     const eventCars=allowedCarLinks.map(link=>{
