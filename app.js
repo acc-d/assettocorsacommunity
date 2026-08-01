@@ -268,8 +268,28 @@ function registrationHasClosed(event){const close=getSpainWallTime(event?.regist
 function isRegistrationOpen(event){return registrationHasOpened(event)&&!registrationHasClosed(event)}
 function sessionIsFull(session){return Number(session?.taken||0)>=Number(session?.max||0)}
 function sessionIsOpen(session){return !!session && session.state==="Open" && !sessionIsFull(session)}
-function isFileVisible(file){const now=getSpainTime();if(file.visibleFrom&&now<new Date(file.visibleFrom))return false;if(file.visibleUntil&&now>new Date(file.visibleUntil))return false;return true}
-function getCountdownText(file){const now=getSpainTime();if(!file.visibleFrom||now>=new Date(file.visibleFrom))return "";const totalSeconds=Math.max(0,Math.ceil((new Date(file.visibleFrom)-now)/1000));const d=Math.floor(totalSeconds/86400),h=Math.floor((totalSeconds%86400)/3600),m=Math.floor((totalSeconds%3600)/60),s=totalSeconds%60;if(d>0)return `Disponible en ${d}d ${h}h`;if(h>0)return `Disponible en ${h}h ${m}m`;if(m>0)return `Disponible en ${m}m ${s}s`;return `Disponible en ${s}s`}
+function madridWallTimeToInstant(value){
+  if(!value)return null;
+  const raw=String(value).trim();
+  if(!raw)return null;
+  if(/[zZ]|[+-]\d\d:?\d\d$/.test(raw)){const date=new Date(raw);return Number.isNaN(date.getTime())?null:date}
+  const match=raw.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s](\d{2}):(\d{2})(?::(\d{2}))?)?/);
+  if(!match){const date=new Date(raw);return Number.isNaN(date.getTime())?null:date}
+  const target={year:+match[1],month:+match[2],day:+match[3],hour:+(match[4]||0),minute:+(match[5]||0),second:+(match[6]||0)};
+  let utc=Date.UTC(target.year,target.month-1,target.day,target.hour,target.minute,target.second);
+  const formatter=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Madrid',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'});
+  for(let i=0;i<3;i++){
+    const parts=Object.fromEntries(formatter.formatToParts(new Date(utc)).filter(p=>p.type!=='literal').map(p=>[p.type,Number(p.value)]));
+    const shown=Date.UTC(parts.year,parts.month-1,parts.day,parts.hour,parts.minute,parts.second);
+    const wanted=Date.UTC(target.year,target.month-1,target.day,target.hour,target.minute,target.second);
+    const diff=wanted-shown;
+    if(!diff)break;
+    utc+=diff;
+  }
+  return new Date(utc);
+}
+function isFileVisible(file){const now=new Date();const from=madridWallTimeToInstant(file.visibleFrom);const until=madridWallTimeToInstant(file.visibleUntil);if(from&&now<from)return false;if(until&&now>until)return false;return true}
+function getCountdownText(file){const now=new Date();const from=madridWallTimeToInstant(file.visibleFrom);if(!from||now>=from)return "";const totalSeconds=Math.max(0,Math.ceil((from-now)/1000));const d=Math.floor(totalSeconds/86400),h=Math.floor((totalSeconds%86400)/3600),m=Math.floor((totalSeconds%3600)/60),s=totalSeconds%60;if(d>0)return `Disponible en ${d}d ${h}h`;if(h>0)return `Disponible en ${h}h ${m}m`;if(m>0)return `Disponible en ${m}m ${s}s`;return `Disponible en ${s}s`}
 
 function fmtDate(v){if(!v)return "—";try{return new Date(v).toLocaleDateString("es-ES")}catch{return "—"}}
 function fmtTime(v){if(!v)return "—";try{return new Date(v).toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"})}catch{return "—"}}
