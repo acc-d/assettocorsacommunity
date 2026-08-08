@@ -331,7 +331,7 @@ async function adminRegistrations(){
       const p=adminState.profiles.find(x=>x.id===r.pilot_id)||{};
       const s=adminState.sessions.find(x=>x.id===r.session_id)||{};
       return `<tr>
-        <td>${p.nombre||''} ${p.apellido||''}<br><small>${p.licencia_piloto||''}</small></td>
+        <td>${p.nombre||''} ${p.apellido||''}<br><small>${p.licencia_piloto||''}</small>${p.email?`<br><small>${p.email}</small>`:''}</td>
         <td>${p.equipo||'—'}<br><small>${p.licencia_equipo||''}</small></td>
         <td>${r.copiloto||''}<br><small>${r.nacionalidad_copiloto||''}</small></td>
         <td>${r.categoria||''}</td>
